@@ -1,0 +1,80 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+.pnp
+.pnp.js
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files
+.env*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# IDE
+.vscode/
+.idea/
+*.iml
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Arquivos deprecados (antigos serviços)
+lib/auth-service.ts
+lib/centro-services.ts
+lib/subscription-service.ts
+lib/super-admin-service.ts
+lib/mock-data.ts
+
+# Scripts de migração (já foram executados)
+migrate-to-supabase.js
+
+# Documentação temporária
+LISTA_ERROS_PENDENTES.md
+
+# Cache
+.turbo/
+dist/
+
+# Staging
+staging/
+
+# Temporary files
+*.tmp
+tmp/
+temp/
+
+# pnpm
+pnpm-lock.yaml.backup
+
+# Local development
+local.db
+*.db
+*.sqlite

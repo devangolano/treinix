@@ -1,0 +1,244 @@
+"use client"
+
+import type React from "react"
+
+import { useState } from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { GraduationCap, AlertCircle, CheckCircle2 } from "lucide-react"
+import { signUp } from "@/lib/supabase-auth"
+import { centroService } from "@/lib/supabase-services"
+import { useAuth } from "@/hooks/use-auth"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+
+export default function RegisterPage() {
+  const router = useRouter()
+  const { login } = useAuth()
+  const [formData, setFormData] = useState({
+    centroName: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    phone: "",
+    address: "",
+  })
+  const [error, setError] = useState("")
+  const [loading, setLoading] = useState(false)
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData((prev) => ({
+      ...prev,
+      [e.target.name]: e.target.value,
+    }))
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError("")
+
+    if (formData.password !== formData.confirmPassword) {
+      setError("As senhas não coincidem")
+      return
+    }
+
+    if (formData.password.length < 6) {
+      setError("A senha deve ter pelo menos 6 caracteres")
+      return
+    }
+
+    setLoading(true)
+
+    try {
+      // Criar usuário no Supabase Auth
+      const authResult = await signUp(formData.email, formData.password, formData.centroName)
+
+      if (!authResult.success) {
+        setError(authResult.error || "Erro ao criar conta")
+        setLoading(false)
+        return
+      }
+
+      // Pequeno delay para garantir que o usuário foi criado
+      await new Promise(resolve => setTimeout(resolve, 500))
+
+      // Criar centro no banco de dados
+      const centroResult = await centroService.create({
+        name: formData.centroName,
+        email: formData.email,
+        phone: formData.phone,
+        address: formData.address,
+        nif: "",
+      })
+
+      if (!centroResult) {
+        setError("Erro ao criar centro de formação. Verifique se o schema foi executado.")
+        setLoading(false)
+        return
+      }
+
+      // Armazenar centroId nos metadados do usuário (for future use)
+      // Vamos armazena também na sessão local
+      const { data: authData } = await signUp(formData.email, formData.password, formData.centroName)
+      if (authData) {
+        // Guardar centroId no localStorage para depois usar
+        localStorage.setItem(`centro_${authData.id}`, centroResult.id)
+      }
+
+      // Fazer login automaticamente após registro bem-sucedido
+      const loginSuccess = await login(formData.email, formData.password)
+      
+      if (loginSuccess) {
+        // Aguardar um pouco para o AuthProvider atualizar
+        await new Promise(resolve => setTimeout(resolve, 500))
+        router.push("/dashboard")
+      } else {
+        // Se login falhar, redirecionar para login page
+        router.push("/login")
+      }
+      
+      setLoading(false)
+    } catch (err) {
+      console.error("Erro ao criar conta:", err)
+      const errorMessage = err instanceof Error ? err.message : "Erro ao criar conta. Tente novamente."
+      setError(errorMessage)
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-muted/50 p-4">
+      <Card className="w-full max-w-2xl">
+        <CardHeader className="space-y-4">
+          <div className="flex justify-center">
+            <Link href="/" className="flex items-center gap-2">
+              <GraduationCap className="h-8 w-8 text-primary" />
+              <span className="text-2xl font-bold">Formação-Ao</span>
+            </Link>
+          </div>
+          <div className="text-center">
+            <CardTitle className="text-2xl">Criar Conta</CardTitle>
+            <CardDescription>Comece seu teste grátis de 3 dias agora</CardDescription>
+          </div>
+
+          <div className="flex items-center justify-center gap-6 pt-2">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-primary" />
+              <span className="text-xs text-muted-foreground">3 dias grátis</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-primary" />
+              <span className="text-xs text-muted-foreground">Sem cartão</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-primary" />
+              <span className="text-xs text-muted-foreground">Suporte dedicado</span>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="centroName">Nome do Centro de Formação</Label>
+                <Input
+                  id="centroName"
+                  name="centroName"
+                  placeholder="Ex: Centro de Formação Excellence"
+                  value={formData.centroName}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  placeholder="contato@centro.ao"
+                  value={formData.email}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="phone">Telefone</Label>
+                <Input
+                  id="phone"
+                  name="phone"
+                  type="tel"
+                  placeholder="+244 923 456 789"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="address">Endereço</Label>
+                <Input
+                  id="address"
+                  name="address"
+                  placeholder="Ex: Luanda, Talatona"
+                  value={formData.address}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="password">Senha</Label>
+                <Input
+                  id="password"
+                  name="password"
+                  type="password"
+                  placeholder="Mínimo 6 caracteres"
+                  value={formData.password}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Confirmar Senha</Label>
+                <Input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type="password"
+                  placeholder="Repita a senha"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+            </div>
+
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? "Criando conta..." : "Criar Conta e Começar Teste Grátis"}
+            </Button>
+
+            <div className="text-center text-sm">
+              <span className="text-muted-foreground">Já tem uma conta? </span>
+              <Link href="/login" className="text-primary hover:underline font-medium">
+                Fazer login
+              </Link>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
