@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/hooks/use-auth"
-import { alunoService, formacaoService, turmaService, pagamentoService } from "@/lib/supabase-services"
+import { alunoService, formacaoService, turmaService, pagamentoService, pagamentoInstallmentService } from "@/lib/supabase-services"
 import { CentroSidebar } from "@/components/centro-sidebar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -14,16 +14,11 @@ import {
   Plus,
   Pencil,
   Trash2,
-  Mail,
   Phone,
-  MapPin,
   GraduationCap,
-  Users,
   Search,
   Filter,
   Eye,
-  DollarSign,
-  AlertCircle,
   Loader2,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
@@ -43,6 +38,7 @@ export default function AlunosPage() {
   const [formacaoFilter, setFormacaoFilter] = useState<string>("all")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [installmentStats, setInstallmentStats] = useState<Record<string, { paidCount: number; totalCount: number; percentage: number }>>({})
   const { toast } = useToast()
 
   useEffect(() => {
@@ -55,6 +51,21 @@ export default function AlunosPage() {
 
     loadData(user.centroId)
   }, [user, authLoading, router])
+
+  // Ouvir eventos de pagamento para recarregar dados quando prestações forem pagas em outra página
+  useEffect(() => {
+    const handler = () => {
+      if (user?.centroId) loadData(user.centroId)
+    }
+    if (typeof window !== "undefined") {
+      window.addEventListener("pagamento:updated", handler)
+    }
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("pagamento:updated", handler)
+      }
+    }
+  }, [user])
 
   const loadData = async (centroId: string) => {
     try {
@@ -72,6 +83,24 @@ export default function AlunosPage() {
       setFormacoes(formacoesData)
       setTurmas(turmasData)
       setPagamentos(pagamentosData)
+
+      // Calcular stats de prestações para cada pagamento
+      const stats: Record<string, { paidCount: number; totalCount: number; percentage: number }> = {}
+      for (const pagamento of pagamentosData) {
+        try {
+          const installments = await pagamentoInstallmentService.getByPagamentoId(pagamento.id)
+          const paidCount = installments.filter((i) => i.status === "paid").length
+          stats[pagamento.id] = {
+            paidCount,
+            totalCount: installments.length,
+            percentage: installments.length > 0 ? Math.round((paidCount / installments.length) * 100) : 0,
+          }
+        } catch (error) {
+          console.error(`Erro ao buscar prestações do pagamento ${pagamento.id}:`, error)
+          stats[pagamento.id] = { paidCount: 0, totalCount: 0, percentage: 0 }
+        }
+      }
+      setInstallmentStats(stats)
     } catch (err) {
       const message = err instanceof Error ? err.message : "Erro ao carregar dados"
       setError(message)
@@ -133,7 +162,12 @@ export default function AlunosPage() {
       status: pagamento.status,
       installments: pagamento.installments,
       installmentsPaid: pagamento.installmentsPaid,
+      id: pagamento.id,
     }
+  }
+
+  const getStats = (pagamentoId: string) => {
+    return installmentStats[pagamentoId] || { paidCount: 0, totalCount: 0, percentage: 0 }
   }
 
   const formatCurrency = (value: number) => {
@@ -255,7 +289,7 @@ export default function AlunosPage() {
             </CardContent>
           </Card>
 
-          <div className="space-y-6">
+          <div className="space-y-2">
             {filteredAlunos.length === 0 ? (
               <Card>
                 <CardContent className="py-12 text-center">
@@ -275,149 +309,42 @@ export default function AlunosPage() {
                         status: paymentStatus.status,
                         amount: paymentStatus.amount,
                         installments: paymentStatus.installments,
-                        installmentsPaid: paymentStatus.installmentsPaid,
+                        installmentsPaid: getStats(paymentStatus.id).paidCount,
                         paymentMethod: "cash",
+                        id: paymentStatus.id,
                       },
                       totalPaid:
-                        (paymentStatus.amount / paymentStatus.installments) * paymentStatus.installmentsPaid,
+                        (paymentStatus.amount / paymentStatus.installments) * getStats(paymentStatus.id).paidCount,
                       totalRemaining:
                         paymentStatus.amount -
-                        (paymentStatus.amount / paymentStatus.installments) * paymentStatus.installmentsPaid,
+                        (paymentStatus.amount / paymentStatus.installments) * getStats(paymentStatus.id).paidCount,
                     }
                   : null
 
                 return (
                   <Card key={aluno.id} className="hover:shadow-md transition-shadow">
-                    <CardHeader className="pb-4">
-                      <div className="flex flex-col md:flex-row md:items-start justify-between gap-3">
-                        <div className="space-y-2">
-                          <CardTitle className="text-xl">{aluno.name}</CardTitle>
-                          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                            <span className="font-medium">BI:</span>
-                            <span>{aluno.bi}</span>
-                            <span>•</span>
-                            <span>{new Date(aluno.birthDate).toLocaleDateString("pt-AO")}</span>
+                    <CardContent className="pt-6">
+                      <div className="flex items-start justify-between gap-3 mb-4">
+                        <div className="space-y-2 flex-1">
+                          <p className="font-semibold text-lg">{aluno.name}</p>
+                          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                            <Phone className="h-4 w-4" />
+                            <span>{aluno.phone}</span>
+                          {aluno.formacaoId && (
+                            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                              <GraduationCap className="h-4 w-4" />
+                              <span>{getFormacaoName(aluno.formacaoId)}</span>
+                            </div>
+                          )}
+                          <p>{aluno.email}</p>
                           </div>
                         </div>
                         <Badge variant={aluno.status === "active" ? "default" : "secondary"} className="h-fit shrink-0">
                           {aluno.status === "active" ? "Ativo" : "Inativo"}
                         </Badge>
                       </div>
-                    </CardHeader>
-                    <CardContent className="space-y-5">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="flex items-center gap-3 text-sm">
-                          <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
-                          <span className="truncate">{aluno.email}</span>
-                        </div>
-                        <div className="flex items-center gap-3 text-sm">
-                          <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
-                          <span>{aluno.phone}</span>
-                        </div>
-                        <div className="flex items-center gap-3 text-sm md:col-span-2">
-                          <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
-                          <span>{aluno.address}</span>
-                        </div>
-                      </div>
 
-                      {(aluno.formacaoId || aluno.turmaId) && (
-                        <>
-                          <Separator />
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {aluno.formacaoId && (
-                              <div className="flex items-start gap-3 text-sm">
-                                <GraduationCap className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-                                <div>
-                                  <p className="text-muted-foreground text-xs mb-1">Formação</p>
-                                  <p className="font-medium">{getFormacaoName(aluno.formacaoId)}</p>
-                                </div>
-                              </div>
-                            )}
-                            {aluno.turmaId && (
-                              <div className="flex items-start gap-3 text-sm">
-                                <Users className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-                                <div>
-                                  <p className="text-muted-foreground text-xs mb-1">Turma</p>
-                                  <p className="font-medium">{getTurmaName(aluno.turmaId)}</p>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </>
-                      )}
-
-                      {paymentInfo && (
-                        <>
-                          <Separator />
-                          <div className="bg-muted/50 rounded-lg p-4 space-y-3">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <DollarSign className="h-4 w-4 text-muted-foreground" />
-                                <span className="font-medium text-sm">Informações de Pagamento</span>
-                              </div>
-                              <Badge
-                                variant={
-                                  paymentInfo.pagamento.status === "completed"
-                                    ? "default"
-                                    : paymentInfo.pagamento.status === "partial"
-                                      ? "secondary"
-                                      : "destructive"
-                                }
-                              >
-                                {paymentInfo.pagamento.status === "completed"
-                                  ? "Pago"
-                                  : paymentInfo.pagamento.status === "partial"
-                                    ? "Parcial"
-                                    : "Pendente"}
-                              </Badge>
-                            </div>
-
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                              <div>
-                                <p className="text-muted-foreground text-xs mb-1">Valor Total</p>
-                                <p className="font-semibold">{formatCurrency(paymentInfo.pagamento.amount)}</p>
-                              </div>
-                              <div>
-                                <p className="text-muted-foreground text-xs mb-1">Pago</p>
-                                <p className="font-semibold text-green-600">{formatCurrency(paymentInfo.totalPaid)}</p>
-                              </div>
-                              <div>
-                                <p className="text-muted-foreground text-xs mb-1">Prestações</p>
-                                <p className="font-semibold">
-                                  {paymentInfo.pagamento.installmentsPaid}/{paymentInfo.pagamento.installments}
-                                </p>
-                              </div>
-                              <div>
-                                <p className="text-muted-foreground text-xs mb-1">Método</p>
-                                <p className="font-medium capitalize">
-                                  {paymentInfo.pagamento.paymentMethod === "cash"
-                                    ? "Dinheiro"
-                                    : paymentInfo.pagamento.paymentMethod === "transfer"
-                                      ? "Transferência"
-                                      : "Multicaixa"}
-                                </p>
-                              </div>
-                            </div>
-
-                            {paymentInfo.pagamento.status !== "completed" && paymentInfo.totalRemaining > 0 && (
-                              <div className="flex items-start gap-2 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-md p-3 mt-3">
-                                <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-                                <div className="text-sm">
-                                  <p className="font-medium text-amber-900 dark:text-amber-100">
-                                    Falta pagar: {formatCurrency(paymentInfo.totalRemaining)}
-                                  </p>
-                                  <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
-                                    {paymentInfo.pagamento.installments - paymentInfo.pagamento.installmentsPaid}{" "}
-                                    prestação(ões) pendente(s)
-                                  </p>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </>
-                      )}
-
-                      <Separator />
+                      <Separator className="my-4" />
 
                       <div className="flex gap-3">
                         <Link href={`/dashboard/alunos/${aluno.id}`} className="flex-1">
@@ -434,7 +361,7 @@ export default function AlunosPage() {
                         </Link>
                         <Button size="sm" variant="destructive" onClick={() => handleDelete(aluno.id)}>
                           <Trash2 className="h-3 w-3 mr-2" />
-                          Excluir
+                          Deletar
                         </Button>
                       </div>
                     </CardContent>

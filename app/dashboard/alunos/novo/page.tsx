@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { alunoService, formacaoService, turmaService, pagamentoService } from "@/lib/supabase-services"
+import { alunoService, formacaoService, turmaService, pagamentoService, pagamentoInstallmentService } from "@/lib/supabase-services"
 import { CentroSidebar } from "@/components/centro-sidebar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -13,11 +13,13 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, AlertCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
 import type { Formacao, Turma } from "@/lib/types"
 import { useAuth } from "@/hooks/use-auth"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 export default function NovoAlunoPage() {
   const router = useRouter()
@@ -43,6 +45,15 @@ export default function NovoAlunoPage() {
     installments: "1" as "1" | "2",
     paymentMethod: "cash" as "cash" | "transfer" | "multicaixa",
   })
+
+  // Estado para Dialog de pagamento obrigatório
+  const [paymentDialog, setPaymentDialog] = useState({
+    open: false,
+    alunoData: null as any,
+    pagamentoId: null as string | null,
+    installmentAmount: 0,
+  })
+  const [paymentLoading, setPaymentLoading] = useState(false)
 
   useEffect(() => {
     if (!currentUser?.centroId) {
@@ -98,7 +109,7 @@ export default function NovoAlunoPage() {
       // Criar pagamento
       const installmentCount = Number(paymentData.installments) as 1 | 2
 
-      await pagamentoService.create({
+      const novoPagamento = await pagamentoService.create({
         centroId: currentUser.centroId,
         alunoId: novoAluno.id,
         turmaId: formData.turmaId,
@@ -109,16 +120,79 @@ export default function NovoAlunoPage() {
         status: "pending",
       })
 
-      toast({
-        title: "Aluno cadastrado com sucesso!",
-        description: `Pagamento em ${paymentData.installments}x criado.`,
-      })
-      router.push("/dashboard/alunos")
+      if (!novoPagamento) {
+        toast({ title: "Erro ao criar pagamento", variant: "destructive" })
+        return
+      }
+
+      // Criar prestações
+      const dataInicio = new Date()
+      await pagamentoInstallmentService.createBatch(
+        novoPagamento.id,
+        installmentCount,
+        price,
+        dataInicio
+      )
+
+      // Se for 2 prestações, abrir dialog de pagamento obrigatório
+      if (installmentCount === 2) {
+        setPaymentDialog({
+          open: true,
+          alunoData: novoAluno,
+          pagamentoId: novoPagamento.id,
+          installmentAmount: price / 2,
+        })
+      } else {
+        toast({
+          title: "Aluno cadastrado com sucesso!",
+          description: "Pagamento registrado à vista.",
+        })
+        router.push("/dashboard/alunos")
+      }
     } catch (error) {
       console.error("Erro ao cadastrar aluno:", error)
       toast({ title: "Erro ao cadastrar aluno", variant: "destructive" })
-    } finally {
       setLoading(false)
+    }
+  }
+
+  const handleCompleteFirstPayment = async () => {
+    if (!paymentDialog.pagamentoId || !currentUser?.centroId) return
+
+    setPaymentLoading(true)
+    try {
+      // Atualizar status do pagamento para partial
+      const pagamentoAtualizado = await pagamentoService.update(paymentDialog.pagamentoId, {
+        status: "partial",
+        installmentsPaid: 1,
+      })
+
+      if (!pagamentoAtualizado) {
+        toast({ title: "Erro ao processar pagamento", variant: "destructive" })
+        setPaymentLoading(false)
+        return
+      }
+
+      // Obter prestações e marcar a primeira como paga
+      const installments = await pagamentoInstallmentService.getByPagamentoId(paymentDialog.pagamentoId)
+      if (installments.length > 0) {
+        await pagamentoInstallmentService.markAsPaid(installments[0].id)
+      }
+
+      toast({
+        title: "Primeira prestação paga com sucesso!",
+        description: "Aluno cadastrado e primeira parcela registrada.",
+      })
+
+      setPaymentDialog({ open: false, alunoData: null, pagamentoId: null, installmentAmount: 0 })
+      setPaymentLoading(false)
+  // notificar outras páginas para recarregar dados
+  if (typeof window !== "undefined") window.dispatchEvent(new Event("pagamento:updated"))
+  setTimeout(() => router.push("/dashboard/alunos"), 500)
+    } catch (error) {
+      console.error("Erro ao processar pagamento:", error)
+      toast({ title: "Erro ao processar pagamento", variant: "destructive" })
+      setPaymentLoading(false)
     }
   }
 
@@ -364,6 +438,70 @@ export default function NovoAlunoPage() {
           </Card>
         </div>
       </div>
+
+      {/* Dialog de Pagamento Obrigatório para 2 Prestações */}
+      <Dialog open={paymentDialog.open} onOpenChange={(open) => !open && setPaymentDialog({ open: false, alunoData: null, pagamentoId: null, installmentAmount: 0 })}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Pagamento da Primeira Prestação</DialogTitle>
+            <DialogDescription>
+              Confirme o pagamento da primeira prestação para {paymentDialog.alunoData?.name}
+            </DialogDescription>
+          </DialogHeader>
+
+          <Alert className="border-blue-200 bg-blue-50">
+            <AlertCircle className="h-4 w-4 text-blue-600" />
+            <AlertDescription className="text-blue-800">
+              O aluno foi cadastrado com sucesso. Agora é necessário registrar o pagamento da primeira prestação.
+            </AlertDescription>
+          </Alert>
+
+          <div className="space-y-4">
+            <div className="bg-primary/5 border border-primary/20 p-4 rounded-lg">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Aluno:</span>
+                  <span className="font-medium">{paymentDialog.alunoData?.name}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Primeira Prestação:</span>
+                  <span className="font-bold text-lg text-primary">
+                    {paymentDialog.installmentAmount.toLocaleString("pt-AO")} Kz
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 p-3 rounded-lg">
+              <p className="text-sm text-amber-800">
+                <strong>Nota:</strong> A segunda prestação poderá ser paga posteriormente através da seção de Pagamentos.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter className="flex gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setPaymentDialog({ open: false, alunoData: null, pagamentoId: null, installmentAmount: 0 })
+                setTimeout(() => router.push("/dashboard/alunos"), 500)
+              }}
+              disabled={paymentLoading}
+            >
+              Registrar Depois
+            </Button>
+            <Button
+              onClick={handleCompleteFirstPayment}
+              disabled={paymentLoading}
+              className="flex-1"
+            >
+              {paymentLoading ? "Processando..." : "Confirmar Pagamento"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
+

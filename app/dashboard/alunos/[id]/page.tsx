@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
-import { alunoService, formacaoService, turmaService, pagamentoService } from "@/lib/supabase-services"
+import { alunoService, formacaoService, turmaService, pagamentoService, pagamentoInstallmentService } from "@/lib/supabase-services"
 import { CentroSidebar } from "@/components/centro-sidebar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -36,7 +36,9 @@ export default function DetalhesAlunoPage() {
   const [formacao, setFormacao] = useState<Formacao | null>(null)
   const [turma, setTurma] = useState<Turma | null>(null)
   const [pagamentos, setPagamentos] = useState<Pagamento[]>([])
+  const [alunos, setAlunos] = useState<Aluno[]>([])
   const [loading, setLoading] = useState(true)
+  const [installmentStats, setInstallmentStats] = useState<Record<string, { paidCount: number; totalCount: number; percentage: number }>>({})
 
   useEffect(() => {
     if (!currentUser?.centroId) {
@@ -72,12 +74,46 @@ export default function DetalhesAlunoPage() {
       const pagamentosData = await pagamentoService.getAll(centroId)
       const filtered = pagamentosData.filter((p) => p.alunoId === alunoId)
       setPagamentos(filtered)
+
+      // Buscar todos os alunos para mostrar quantos estão na mesma turma
+      const alunosData = await alunoService.getAll(centroId)
+      setAlunos(alunosData)
+
+      // Calcular stats de prestações para cada pagamento
+      const stats: Record<string, { paidCount: number; totalCount: number; percentage: number }> = {}
+      for (const pagamento of filtered) {
+        try {
+          const installments = await pagamentoInstallmentService.getByPagamentoId(pagamento.id)
+          const paidCount = installments.filter((i) => i.status === "paid").length
+          stats[pagamento.id] = {
+            paidCount,
+            totalCount: installments.length,
+            percentage: installments.length > 0 ? Math.round((paidCount / installments.length) * 100) : 0,
+          }
+        } catch (error) {
+          console.error(`Erro ao buscar prestações do pagamento ${pagamento.id}:`, error)
+          stats[pagamento.id] = { paidCount: 0, totalCount: 0, percentage: 0 }
+        }
+      }
+      setInstallmentStats(stats)
     } catch (error) {
       console.error("Erro ao carregar dados:", error)
       toast({ title: "Erro ao carregar dados", variant: "destructive" })
     } finally {
       setLoading(false)
     }
+  }
+
+  const getStats = (pagamentoId: string) => {
+    return installmentStats[pagamentoId] || { paidCount: 0, totalCount: 0, percentage: 0 }
+  }
+
+  const getRealStatus = (pagamento: Pagamento) => {
+    const stats = getStats(pagamento.id)
+    if (stats.paidCount === stats.totalCount && stats.totalCount > 0) {
+      return "completed"
+    }
+    return pagamento.status
   }
 
   const handleDownloadPDF = () => {
@@ -423,7 +459,7 @@ export default function DetalhesAlunoPage() {
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Vagas</p>
                       <p className="text-base">
-                        {turma.currentStudents} / {turma.maxStudents} alunos
+                        {alunos.filter((a) => a.turmaId === turma.id).length} / {turma.maxStudents} alunos
                       </p>
                     </div>
                   </div>
@@ -448,19 +484,20 @@ export default function DetalhesAlunoPage() {
                         multicaixa: "Multicaixa",
                       }[pagamento.paymentMethod]
 
+                      const realStatus = getRealStatus(pagamento)
                       const statusPagamento = {
                         pending: "Pendente",
                         partial: "Parcial",
-                        completed: "Completo",
+                        completed: "Pago",
                         cancelled: "Cancelado",
-                      }[pagamento.status]
+                      }[realStatus]
 
                       const statusColor = {
                         pending: "secondary",
                         partial: "default",
                         completed: "default",
                         cancelled: "destructive",
-                      }[pagamento.status] as any
+                      }[realStatus] as any
 
                       return (
                         <div key={pagamento.id} className="border rounded-lg p-4">
@@ -482,7 +519,7 @@ export default function DetalhesAlunoPage() {
                             <div>
                               <span className="text-muted-foreground">Prestações:</span>
                               <span className="ml-2 font-medium">
-                                {pagamento.installmentsPaid}/{pagamento.installments}
+                                {getStats(pagamento.id).paidCount}/{pagamento.installments}
                               </span>
                             </div>
                           </div>

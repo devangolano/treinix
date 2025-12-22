@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { signIn, signOut, getCurrentUser, onAuthStateChange } from "@/lib/supabase-auth"
-import { turmaService, formacaoService  } from "@/lib/supabase-services"
+import { turmaService, formacaoService, alunoService } from "@/lib/supabase-services"
 import { CentroSidebar } from "@/components/centro-sidebar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -20,6 +19,7 @@ export default function TurmasPage() {
   const { user: currentUser } = useAuth()
   const [turmas, setTurmas] = useState<Turma[]>([])
   const [formacoes, setFormacoes] = useState<Formacao[]>([])
+  const [alunos, setAlunos] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
 
@@ -29,7 +29,26 @@ export default function TurmasPage() {
       return
     }
     loadData(currentUser.centroId)
+    loadAlunos(currentUser.centroId)
   }, [currentUser, router])
+
+  // Recarregar quando um aluno for cadastrado ou pagamento atualizado
+  useEffect(() => {
+    const handler = () => {
+      if (currentUser?.centroId) {
+        loadAlunos(currentUser.centroId)
+        loadData(currentUser.centroId)
+      }
+    }
+    if (typeof window !== "undefined") {
+      window.addEventListener("pagamento:updated", handler)
+    }
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("pagamento:updated", handler)
+      }
+    }
+  }, [currentUser])
 
   const loadData = async (centroId: string) => {
     try {
@@ -48,8 +67,21 @@ export default function TurmasPage() {
     }
   }
 
+  const loadAlunos = async (centroId: string) => {
+    try {
+      const alunosData = await alunoService.getAll(centroId)
+      setAlunos(alunosData)
+    } catch (error) {
+      console.error("Erro ao carregar alunos:", error)
+    }
+  }
+
   const getFormacaoName = (formacaoId: string) => {
     return formacoes.find((f) => f.id === formacaoId)?.name || "Formação não encontrada"
+  }
+
+  const getAlunosPorTurma = (turmaId: string) => {
+    return alunos.filter((a) => a.turmaId === turmaId).length
   }
 
   const handleDelete = async (id: string) => {
@@ -151,11 +183,27 @@ export default function TurmasPage() {
                           <div>
                             <p className="text-xs text-muted-foreground">Vagas</p>
                             <p className="text-sm font-medium">
-                              {turma.currentStudents}/{turma.maxStudents} alunos
+                              {getAlunosPorTurma(turma.id)}/{turma.maxStudents} alunos
                             </p>
                           </div>
                         </div>
                       </div>
+
+                      {/* Mostrar alunos inscritos */}
+                      {alunos.filter((a) => a.turmaId === turma.id).length > 0 && (
+                        <div className="pt-4 border-t">
+                          <p className="text-xs text-muted-foreground mb-2">Alunos inscritos:</p>
+                          <div className="flex flex-wrap gap-2">
+                            {alunos
+                              .filter((a) => a.turmaId === turma.id)
+                              .map((aluno) => (
+                                <span key={aluno.id} className="text-xs bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 px-2 py-1 rounded">
+                                  {aluno.name}
+                                </span>
+                              ))}
+                          </div>
+                        </div>
+                      )}
 
                       <div className="flex gap-3 pt-3 border-t">
                         <Link href={`/dashboard/turmas/${turma.id}/editar`} className="flex-1">

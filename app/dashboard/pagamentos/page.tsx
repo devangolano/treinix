@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast"
 import type { Pagamento, PagamentoInstallment, Aluno, Turma } from "@/lib/types"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useAuth } from "@/hooks/use-auth"
+import { Progress } from "@/components/ui/progress"
 
 export default function PagamentosPage() {
   const router = useRouter()
@@ -30,6 +31,7 @@ export default function PagamentosPage() {
     installments: PagamentoInstallment[]
   }>({ open: false, pagamento: null, installments: [] })
   const [loading, setLoading] = useState(false)
+  const [installmentStats, setInstallmentStats] = useState<Record<string, { paidCount: number; totalCount: number; percentage: number }>>({})
   const { toast } = useToast()
 
   useEffect(() => {
@@ -50,6 +52,24 @@ export default function PagamentosPage() {
       setPagamentos(pagamentosData)
       setAlunos(alunosData)
       setTurmas(turmasData)
+      
+      // Calcular stats de prestações para cada pagamento
+      const stats: Record<string, { paidCount: number; totalCount: number; percentage: number }> = {}
+      for (const pagamento of pagamentosData) {
+        try {
+          const installments = await pagamentoInstallmentService.getByPagamentoId(pagamento.id)
+          const paidCount = installments.filter((i) => i.status === "paid").length
+          stats[pagamento.id] = {
+            paidCount,
+            totalCount: installments.length,
+            percentage: installments.length > 0 ? Math.round((paidCount / installments.length) * 100) : 0,
+          }
+        } catch (error) {
+          console.error(`Erro ao buscar prestações do pagamento ${pagamento.id}:`, error)
+          stats[pagamento.id] = { paidCount: 0, totalCount: 0, percentage: 0 }
+        }
+      }
+      setInstallmentStats(stats)
     } catch (error) {
       console.error("Erro ao carregar dados:", error)
       toast({ title: "Erro ao carregar dados", variant: "destructive" })
@@ -62,6 +82,11 @@ export default function PagamentosPage() {
 
   const getTurmaName = (turmaId: string) => {
     return turmas.find((t) => t.id === turmaId)?.name || "Turma não encontrada"
+  }
+
+  // Obter stats de prestações de um pagamento
+  const getStats = (pagamentoId: string) => {
+    return installmentStats[pagamentoId] || { paidCount: 0, totalCount: 0, percentage: 0 }
   }
 
   const handleViewInstallments = async (pagamento: Pagamento) => {
@@ -78,17 +103,104 @@ export default function PagamentosPage() {
     setLoading(true)
     try {
       await pagamentoInstallmentService.markAsPaid(installmentId)
-      toast({ title: "Prestação paga com sucesso!" })
+      
+      // Atualizar status do pagamento se todas as prestações foram pagas
+      if (installmentsDialog.pagamento) {
+        const allInstallments = await pagamentoInstallmentService.getByPagamentoId(installmentsDialog.pagamento.id)
+        
+        const paidCount = allInstallments.filter((i) => i.status === "paid").length
+        
+        const allPaid = paidCount === allInstallments.length
+        
+        if (allPaid) {
+          const updateResult = await pagamentoService.update(installmentsDialog.pagamento.id, {
+            status: "completed",
+            installmentsPaid: installmentsDialog.pagamento.installments,
+          })
+          toast({ title: "Pagamento completo registrado com sucesso!" })
+        } else {
+          const updateResult = await pagamentoService.update(installmentsDialog.pagamento.id, {
+            status: "partial",
+            installmentsPaid: paidCount,
+          })
+          toast({ title: "Prestação paga com sucesso!" })
+        }
+      }
+      
+      // Recarregar dados completamente após pagar prestação
       if (currentUser?.centroId) {
+        await new Promise((resolve) => setTimeout(resolve, 500)) // Aguardar um pouco para sync do BD
         await loadData(currentUser.centroId)
+        
+        // Recarregar também o dialog de prestações
         if (installmentsDialog.pagamento) {
+          const updatedPagamento = await pagamentoService.getById(installmentsDialog.pagamento.id)
           const installments = await pagamentoInstallmentService.getByPagamentoId(installmentsDialog.pagamento.id)
-          setInstallmentsDialog({ ...installmentsDialog, installments })
+          if (updatedPagamento) {
+            setInstallmentsDialog({ 
+              open: true, 
+              pagamento: updatedPagamento, 
+              installments 
+            })
+            // notificar outras páginas para recarregar dados
+            if (typeof window !== "undefined") window.dispatchEvent(new Event("pagamento:updated"))
+          }
         }
       }
     } catch (error) {
       console.error("Erro ao pagar prestação:", error)
       toast({ title: "Erro ao pagar prestação", variant: "destructive" })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSignNextInstallment = async () => {
+    if (!installmentsDialog.pagamento) return
+
+    setLoading(true)
+    try {
+      const unpaidInstallments = installmentsDialog.installments.filter((i) => i.status !== "paid")
+
+      if (unpaidInstallments.length === 0) {
+        toast({ title: "Todas as prestações já foram pagas", variant: "default" })
+        setLoading(false)
+        return
+      }
+
+      // Assinar a próxima prestação (marcar como paid)
+      const nextInstallment = unpaidInstallments[0]
+      await pagamentoInstallmentService.markAsPaid(nextInstallment.id)
+
+      // Verificar se todas as prestações foram pagas
+      const allInstallments = await pagamentoInstallmentService.getByPagamentoId(installmentsDialog.pagamento.id)
+      const allPaid = allInstallments.every((i) => i.status === "paid")
+      
+      if (allPaid) {
+        // Atualizar status para completed
+        await pagamentoService.update(installmentsDialog.pagamento.id, {
+          status: "completed",
+          installmentsPaid: installmentsDialog.pagamento.installments,
+        })
+        toast({ title: "Todas as prestações foram pagas! Pagamento completo." })
+      } else {
+        toast({ title: `Prestação ${nextInstallment.installmentNumber} assinada com sucesso!` })
+      }
+
+      if (currentUser?.centroId) {
+        await new Promise((resolve) => setTimeout(resolve, 500)) // Aguardar um pouco para sync do BD
+        await loadData(currentUser.centroId)
+        const updatedPagamento = await pagamentoService.getById(installmentsDialog.pagamento.id)
+        const updatedInstallments = await pagamentoInstallmentService.getByPagamentoId(installmentsDialog.pagamento.id)
+        if (updatedPagamento) {
+          setInstallmentsDialog({ open: true, pagamento: updatedPagamento, installments: updatedInstallments })
+            // notificar outras páginas para recarregar dados
+            if (typeof window !== "undefined") window.dispatchEvent(new Event("pagamento:updated"))
+        }
+      }
+    } catch (error) {
+      console.error("Erro ao assinar próxima prestação:", error)
+      toast({ title: "Erro ao assinar próxima prestação", variant: "destructive" })
     } finally {
       setLoading(false)
     }
@@ -214,7 +326,7 @@ export default function PagamentosPage() {
                           <div>
                             <p className="text-xs text-muted-foreground mb-1">Prestações</p>
                             <p className="font-semibold">
-                              {pagamento.installmentsPaid}/{pagamento.installments}
+                              {getStats(pagamento.id).paidCount}/{pagamento.installments}
                             </p>
                           </div>
                           <div>
@@ -231,6 +343,17 @@ export default function PagamentosPage() {
                             <p className="text-xs text-muted-foreground mb-1">Data</p>
                             <p className="font-semibold text-sm">{pagamento.createdAt.toLocaleDateString("pt-AO")}</p>
                           </div>
+                        </div>
+
+                        {/* Barra de progresso */}
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm font-medium">Progresso de Pagamento</p>
+                            <p className="text-sm text-muted-foreground">
+                              {getStats(pagamento.id).percentage}%
+                            </p>
+                          </div>
+                          <Progress value={getStats(pagamento.id).percentage} className="h-2" />
                         </div>
 
                         <div className="pt-3 border-t">
@@ -263,17 +386,21 @@ export default function PagamentosPage() {
                   return (
                     <Card key={pagamento.id} className="hover:shadow-md transition-shadow">
                       <CardContent className="py-4">
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between mb-3">
                           <div className="space-y-1">
                             <p className="font-semibold">{getAlunoName(pagamento.alunoId)}</p>
                             <p className="text-sm text-muted-foreground">{getTurmaName(pagamento.turmaId)}</p>
                             <p className="text-sm font-semibold">{pagamento.amount.toLocaleString("pt-AO")} Kz</p>
+                            <p className="text-sm text-muted-foreground">
+                              {getStats(pagamento.id).paidCount}/{pagamento.installments} prestações
+                            </p>
                           </div>
                           <Badge variant={statusConfig.variant}>
                             <StatusIcon className="h-3 w-3 mr-1" />
                             {statusConfig.label}
                           </Badge>
                         </div>
+                        <Progress value={100} className="h-2" />
                       </CardContent>
                     </Card>
                   )
@@ -299,13 +426,15 @@ export default function PagamentosPage() {
                   return (
                     <Card key={pagamento.id} className="hover:shadow-md transition-shadow">
                       <CardContent className="py-4">
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between mb-3">
                           <div className="space-y-1">
                             <p className="font-semibold">{getAlunoName(pagamento.alunoId)}</p>
                             <p className="text-sm text-muted-foreground">{getTurmaName(pagamento.turmaId)}</p>
-                            <p className="text-sm">
-                              {pagamento.amount.toLocaleString("pt-AO")} Kz - {pagamento.installmentsPaid}/
-                              {pagamento.installments} prestações
+                            <p className="text-sm font-semibold">
+                              {pagamento.amount.toLocaleString("pt-AO")} Kz
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {getStats(pagamento.id).paidCount}/{pagamento.installments} prestações
                             </p>
                           </div>
                           <Badge variant={statusConfig.variant}>
@@ -313,6 +442,7 @@ export default function PagamentosPage() {
                             {statusConfig.label}
                           </Badge>
                         </div>
+                        <Progress value={getStats(pagamento.id).percentage} className="h-2" />
                       </CardContent>
                     </Card>
                   )
@@ -380,6 +510,18 @@ export default function PagamentosPage() {
                   </Card>
                 ))}
               </div>
+
+              {/* Botão de Assinar Próxima Prestação */}
+              {installmentsDialog.pagamento.status === "partial" &&
+                installmentsDialog.installments.some((i) => i.status !== "paid") && (
+                  <Button
+                    onClick={handleSignNextInstallment}
+                    disabled={loading}
+                    className="w-full bg-green-600 hover:bg-green-700"
+                  >
+                    {loading ? "Processando..." : "✓ Assinar Próxima Prestação"}
+                  </Button>
+                )}
             </div>
           )}
         </DialogContent>
