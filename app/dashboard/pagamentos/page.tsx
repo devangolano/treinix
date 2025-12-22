@@ -303,7 +303,7 @@ export default function PagamentosPage() {
                   const StatusIcon = statusConfig.icon
                   return (
                     <Card key={pagamento.id} className="hover:shadow-md transition-shadow">
-                      <CardHeader className="pb-4">
+                      <CardHeader className="pb-1">
                         <div className="flex items-start justify-between gap-3">
                           <div className="space-y-2">
                             <CardTitle className="text-lg">{getAlunoName(pagamento.alunoId)}</CardTitle>
@@ -317,7 +317,7 @@ export default function PagamentosPage() {
                           </Badge>
                         </div>
                       </CardHeader>
-                      <CardContent className="space-y-5">
+                      <CardContent className="">
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                           <div>
                             <p className="text-xs text-muted-foreground mb-1">Valor Total</p>
@@ -343,17 +343,6 @@ export default function PagamentosPage() {
                             <p className="text-xs text-muted-foreground mb-1">Data</p>
                             <p className="font-semibold text-sm">{pagamento.createdAt.toLocaleDateString("pt-AO")}</p>
                           </div>
-                        </div>
-
-                        {/* Barra de progresso */}
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <p className="text-sm font-medium">Progresso de Pagamento</p>
-                            <p className="text-sm text-muted-foreground">
-                              {getStats(pagamento.id).percentage}%
-                            </p>
-                          </div>
-                          <Progress value={getStats(pagamento.id).percentage} className="h-2" />
                         </div>
 
                         <div className="pt-3 border-t">

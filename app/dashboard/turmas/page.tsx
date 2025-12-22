@@ -189,22 +189,6 @@ export default function TurmasPage() {
                         </div>
                       </div>
 
-                      {/* Mostrar alunos inscritos */}
-                      {alunos.filter((a) => a.turmaId === turma.id).length > 0 && (
-                        <div className="pt-4 border-t">
-                          <p className="text-xs text-muted-foreground mb-2">Alunos inscritos:</p>
-                          <div className="flex flex-wrap gap-2">
-                            {alunos
-                              .filter((a) => a.turmaId === turma.id)
-                              .map((aluno) => (
-                                <span key={aluno.id} className="text-xs bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 px-2 py-1 rounded">
-                                  {aluno.name}
-                                </span>
-                              ))}
-                          </div>
-                        </div>
-                      )}
-
                       <div className="flex gap-3 pt-3 border-t">
                         <Link href={`/dashboard/turmas/${turma.id}/editar`} className="flex-1">
                           <Button size="sm" variant="outline" className="w-full bg-transparent">

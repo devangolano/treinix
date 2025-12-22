@@ -20,6 +20,7 @@ import {
   Filter,
   Eye,
   Loader2,
+  Mail,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import type { Aluno, Formacao, Turma, Pagamento } from "@/lib/types"
@@ -336,7 +337,10 @@ export default function AlunosPage() {
                               <span>{getFormacaoName(aluno.formacaoId)}</span>
                             </div>
                           )}
+                          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                          <Mail className="h-4 w-4" />
                           <p>{aluno.email}</p>
+                            </div>
                           </div>
                         </div>
                         <Badge variant={aluno.status === "active" ? "default" : "secondary"} className="h-fit shrink-0">
