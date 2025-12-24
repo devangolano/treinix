@@ -4,8 +4,8 @@ import { ArrowRight, CheckCircle2 } from "lucide-react"
 
 export function HeroSection() {
   return (
-    <section className="w-full py-12 md:py-24 lg:py-32">
-      <div className="container px-4 md:px-6">
+    <section className="w-full py-4 md:py-8 lg:py-12">
+      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col items-center text-center space-y-8">
           <div className="space-y-4 max-w-3xl">
             <div className="inline-block rounded-lg bg-primary/10 px-3 py-1 text-sm text-primary">
@@ -14,7 +14,7 @@ export function HeroSection() {
             <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl text-balance">
               Sistema Completo de Gestão para Centros de Formação
             </h1>
-            <p className="mx-auto max-w-[700px] text-muted-foreground text-lg md:text-xl leading-relaxed">
+            <p className="mx-auto max-w-175 text-muted-foreground text-lg md:text-xl leading-relaxed">
               Gerencie alunos, turmas, pagamentos e formações em uma única plataforma. Automatize processos e foque no
               que realmente importa: a educação.
             </p>

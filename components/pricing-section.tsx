@@ -52,12 +52,12 @@ const plans = [
 export function PricingSection() {
   return (
     <section id="pricing" className="w-full py-12 md:py-24 lg:py-32">
-      <div className="container px-4 md:px-6">
+      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col items-center text-center space-y-4 mb-12">
           <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl text-balance">
             Planos transparentes e acessíveis
           </h2>
-          <p className="max-w-[700px] text-muted-foreground md:text-lg leading-relaxed">
+          <p className="max-w-175 text-muted-foreground md:text-lg leading-relaxed">
             Escolha o plano ideal para o seu centro de formação. Comece com 3 dias grátis.
           </p>
         </div>
