@@ -1,9 +1,10 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { Building2, FileText, LayoutDashboard, LogOut, GraduationCap } from "lucide-react"
+import { Building2, FileText, LayoutDashboard, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { signOut } from "@/lib/supabase-auth"
 import { useRouter } from "next/navigation"
@@ -38,8 +39,7 @@ export function SuperAdminSidebar() {
   return (
     <div className="flex h-screen w-64 flex-col border-r border-border bg-card">
       <div className="flex h-16 items-center gap-2 border-b border-border px-6">
-        <GraduationCap className="h-6 w-6 text-primary" />
-        <span className="text-lg font-bold">Super Admin</span>
+        <Image src="/logo.png" alt="Treinix Logo" width={120} height={30} className="h-6 w-auto" />
       </div>
 
       <nav className="flex-1 space-y-1 p-4">

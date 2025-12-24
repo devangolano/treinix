@@ -4,12 +4,13 @@ import type React from "react"
 
 import { useState } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { GraduationCap, AlertCircle } from "lucide-react"
+import { AlertCircle } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
@@ -49,9 +50,8 @@ export default function LoginPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-4">
           <div className="flex justify-center">
-            <Link href="/" className="flex items-center gap-2">
-              <GraduationCap className="h-8 w-8 text-primary" />
-              <span className="text-2xl font-bold">Formação-Ao</span>
+            <Link href="/" className="flex items-center">
+              <Image src="/logo.png" alt="Treinix Logo" width={140} height={35} className="h-8 w-auto" />
             </Link>
           </div>
           <div className="text-center">

@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import {
@@ -69,8 +70,7 @@ function SidebarContent() {
   return (
     <div className="flex h-full flex-col">
       <div className="flex h-16 items-center gap-2 border-b border-border px-6">
-        <GraduationCap className="h-6 w-6 text-primary" />
-        <span className="text-lg font-bold">Formação-Ao</span>
+        <Image src="/logo.png" alt="Treinix Logo" width={120} height={30} className="h-6 w-auto" />
       </div>
 
       <nav className="flex-1 space-y-1 p-4">
