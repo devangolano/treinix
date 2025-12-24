@@ -46,8 +46,8 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/50 p-4">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-blue-950 p-4">
+      <Card className="w-full max-w-md bg-blue-900/40 border-blue-800 shadow-xl">
         <CardHeader className="space-y-4">
           <div className="flex justify-center">
             <Link href="/" className="flex items-center">
@@ -55,11 +55,11 @@ export default function LoginPage() {
             </Link>
           </div>
           <div className="text-center">
-            <CardTitle className="text-2xl">Entrar na Plataforma</CardTitle>
-            <CardDescription>Acesse sua conta para continuar</CardDescription>
+            <CardTitle className="text-2xl text-white">Entrar na Plataforma</CardTitle>
+            <CardDescription className="text-blue-100">Acesse sua conta para continuar</CardDescription>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
               <Alert variant="destructive">
@@ -69,46 +69,40 @@ export default function LoginPage() {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className="text-white font-semibold">Email</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="seu@email.ao"
+                placeholder="seu@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                className="bg-blue-800/40 border-blue-700 text-white placeholder:text-blue-200 focus:border-orange-500 focus:ring-orange-500"
                 required
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Senha</Label>
+              <Label htmlFor="password" className="text-white font-semibold">Senha</Label>
               <Input
                 id="password"
                 type="password"
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                className="bg-blue-800/40 border-blue-700 text-white placeholder:text-blue-200 focus:border-orange-500 focus:ring-orange-500"
                 required
               />
             </div>
 
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold" disabled={loading}>
               {loading ? "Entrando..." : "Entrar"}
             </Button>
 
             <div className="text-center text-sm">
-              <span className="text-muted-foreground">Ainda não tem uma conta? </span>
-              <Link href="/register" className="text-primary hover:underline font-medium">
+              <span className="text-blue-200">Ainda não tem uma conta? </span>
+              <Link href="/register" className="text-orange-400 hover:text-orange-300 hover:underline font-semibold">
                 Criar conta grátis
               </Link>
-            </div>
-
-            <div className="pt-4 border-t border-border">
-              <p className="text-xs text-muted-foreground text-center">
-                <strong>Demo:</strong> admin@formacao-ao.com / admin123 (Super Admin)
-                <br />
-                ou joao@excellence.ao / senha123 (Centro)
-              </p>
             </div>
           </form>
         </CardContent>

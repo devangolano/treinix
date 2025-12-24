@@ -111,8 +111,8 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/50 p-4">
-      <Card className="w-full max-w-2xl">
+    <div className="min-h-screen flex items-center justify-center bg-blue-950 p-4">
+      <Card className="w-full max-w-2xl bg-blue-900/40 border-blue-800 shadow-xl">
         <CardHeader className="space-y-4">
           <div className="flex justify-center">
             <Link href="/" className="flex items-center">
@@ -120,26 +120,26 @@ export default function RegisterPage() {
             </Link>
           </div>
           <div className="text-center">
-            <CardTitle className="text-2xl">Criar Conta</CardTitle>
-            <CardDescription>Comece seu teste grátis de 3 dias agora</CardDescription>
+            <CardTitle className="text-2xl text-white">Criar Conta</CardTitle>
+            <CardDescription className="text-blue-100">Comece seu teste grátis de 3 dias agora</CardDescription>
           </div>
 
           <div className="flex items-center justify-center gap-6 pt-2">
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-primary" />
-              <span className="text-xs text-muted-foreground">3 dias grátis</span>
+              <CheckCircle2 className="h-4 w-4 text-orange-400" />
+              <span className="text-xs text-blue-200">3 dias grátis</span>
             </div>
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-primary" />
-              <span className="text-xs text-muted-foreground">Sem cartão</span>
+              <CheckCircle2 className="h-4 w-4 text-orange-400" />
+              <span className="text-xs text-blue-200">Sem cartão</span>
             </div>
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-primary" />
-              <span className="text-xs text-muted-foreground">Suporte dedicado</span>
+              <CheckCircle2 className="h-4 w-4 text-orange-400" />
+              <span className="text-xs text-blue-200">Suporte dedicado</span>
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-2">
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
               <Alert variant="destructive">
@@ -150,19 +150,20 @@ export default function RegisterPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="centroName">Nome do Centro de Formação</Label>
+                <Label htmlFor="centroName" className="text-white font-semibold">Nome do Centro de Formação</Label>
                 <Input
                   id="centroName"
                   name="centroName"
                   placeholder="Ex: Centro de Formação Excellence"
                   value={formData.centroName}
                   onChange={handleChange}
+                  className="bg-blue-800/40 border-blue-700 text-white placeholder:text-blue-200 focus:border-orange-500 focus:ring-orange-500"
                   required
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email" className="text-white font-semibold">Email</Label>
                 <Input
                   id="email"
                   name="email"
@@ -170,12 +171,13 @@ export default function RegisterPage() {
                   placeholder="contato@centro.ao"
                   value={formData.email}
                   onChange={handleChange}
+                  className="bg-blue-800/40 border-blue-700 text-white placeholder:text-blue-200 focus:border-orange-500 focus:ring-orange-500"
                   required
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="phone">Telefone</Label>
+                <Label htmlFor="phone" className="text-white font-semibold">Telefone</Label>
                 <Input
                   id="phone"
                   name="phone"
@@ -183,24 +185,26 @@ export default function RegisterPage() {
                   placeholder="+244 923 456 789"
                   value={formData.phone}
                   onChange={handleChange}
+                  className="bg-blue-800/40 border-blue-700 text-white placeholder:text-blue-200 focus:border-orange-500 focus:ring-orange-500"
                   required
                 />
               </div>
 
               <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="address">Endereço</Label>
+                <Label htmlFor="address" className="text-white font-semibold">Endereço</Label>
                 <Input
                   id="address"
                   name="address"
                   placeholder="Ex: Luanda, Talatona"
                   value={formData.address}
                   onChange={handleChange}
+                  className="bg-blue-800/40 border-blue-700 text-white placeholder:text-blue-200 focus:border-orange-500 focus:ring-orange-500"
                   required
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">Senha</Label>
+                <Label htmlFor="password" className="text-white font-semibold">Senha</Label>
                 <Input
                   id="password"
                   name="password"
@@ -208,12 +212,13 @@ export default function RegisterPage() {
                   placeholder="Mínimo 6 caracteres"
                   value={formData.password}
                   onChange={handleChange}
+                  className="bg-blue-800/40 border-blue-700 text-white placeholder:text-blue-200 focus:border-orange-500 focus:ring-orange-500"
                   required
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirmar Senha</Label>
+                <Label htmlFor="confirmPassword" className="text-white font-semibold">Confirmar Senha</Label>
                 <Input
                   id="confirmPassword"
                   name="confirmPassword"
@@ -221,18 +226,19 @@ export default function RegisterPage() {
                   placeholder="Repita a senha"
                   value={formData.confirmPassword}
                   onChange={handleChange}
+                  className="bg-blue-800/40 border-blue-700 text-white placeholder:text-blue-200 focus:border-orange-500 focus:ring-orange-500"
                   required
                 />
               </div>
             </div>
 
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold" disabled={loading}>
               {loading ? "Criando conta..." : "Criar Conta e Começar Teste Grátis"}
             </Button>
 
             <div className="text-center text-sm">
-              <span className="text-muted-foreground">Já tem uma conta? </span>
-              <Link href="/login" className="text-primary hover:underline font-medium">
+              <span className="text-blue-200">Já tem uma conta? </span>
+              <Link href="/login" className="text-orange-400 hover:text-orange-300 hover:underline font-semibold">
                 Fazer login
               </Link>
             </div>
