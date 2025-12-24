@@ -1,0 +1,111 @@
+/* Estilos adicionais para identidade visual Treinix com azul escuro */
+
+/* Gradientes vibrantes inspirados no logo */
+.gradient-treinix-primary {
+  background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%);
+}
+
+.gradient-treinix-warm {
+  background: linear-gradient(135deg, #f97316 0%, #fcd34d 100%);
+}
+
+.gradient-treinix-vibrant {
+  background: linear-gradient(135deg, #0f172a 0%, #f97316 50%, #fcd34d 100%);
+}
+
+/* Efeito hover com gradiente */
+.btn-gradient-primary {
+  background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%);
+  transition: all 0.3s ease;
+}
+
+.btn-gradient-primary:hover {
+  background: linear-gradient(135deg, #1e40af 0%, #162e4a 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(30, 58, 138, 0.3);
+}
+
+.btn-gradient-secondary {
+  background: linear-gradient(135deg, #f97316 0%, #fcd34d 100%);
+  transition: all 0.3s ease;
+}
+
+.btn-gradient-secondary:hover {
+  background: linear-gradient(135deg, #ea580c 0%, #fbbf24 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(249, 115, 22, 0.3);
+}
+
+/* Cards com sombra e borda elegante */
+.card-treinix {
+  border: 1px solid rgba(30, 58, 138, 0.2);
+  box-shadow: 0 4px 6px rgba(30, 58, 138, 0.05);
+  transition: all 0.3s ease;
+}
+
+.card-treinix:hover {
+  border-color: rgba(30, 58, 138, 0.4);
+  box-shadow: 0 12px 24px rgba(30, 58, 138, 0.15);
+}
+
+/* Badges com cores vibrantes */
+.badge-treinix-primary {
+  background: linear-gradient(135deg, rgba(30, 58, 138, 0.15) 0%, rgba(15, 23, 42, 0.15) 100%);
+  color: #1e3a8a;
+  border: 1px solid rgba(30, 58, 138, 0.4);
+}
+
+.badge-treinix-accent {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(249, 115, 22, 0.1) 100%);
+  color: #dc2626;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+/* Linha decorativa com gradiente */
+.divider-gradient {
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #1e3a8a, #f97316, transparent);
+}
+
+/* Animação de entrada */
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-in {
+  animation: slideInUp 0.5s ease-out;
+}
+
+/* Efeito de foco para inputs */
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: #1e3a8a;
+  box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
+}
+
+/* Scrollbar customizado */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #1e3a8a 0%, #f97316 100%);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #1e40af 0%, #ea580c 100%);
+}

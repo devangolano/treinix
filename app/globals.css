@@ -4,54 +4,60 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Tema profissional para SaaS educacional - paleta de azul e neutros */
-  --background: oklch(0.99 0 0);
-  --foreground: oklch(0.15 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.15 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.15 0 0);
-  --primary: oklch(0.45 0.15 250);
+  /* Tema Treinix - Azul escuro como cor principal e de fundo */
+  --background: oklch(0.1 0.01 260);
+  --foreground: oklch(0.97 0 0);
+  --card: oklch(0.15 0.01 260);
+  --card-foreground: oklch(0.97 0 0);
+  --popover: oklch(0.15 0.01 260);
+  --popover-foreground: oklch(0.97 0 0);
+  /* Primary: Azul escuro vibrante (do logo Treinix) */
+  --primary: oklch(0.35 0.25 260);
   --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.96 0.01 250);
+  /* Secondary: Laranja/Amarelo (do logo Treinix) */
+  --secondary: oklch(0.75 0.22 80);
   --secondary-foreground: oklch(0.15 0 0);
-  --muted: oklch(0.96 0.01 250);
-  --muted-foreground: oklch(0.5 0.02 250);
-  --accent: oklch(0.55 0.18 200);
+  --muted: oklch(0.22 0.02 260);
+  --muted-foreground: oklch(0.7 0.03 260);
+  /* Accent: Vermelho/Vermelho-Laranja (do logo Treinix) */
+  --accent: oklch(0.68 0.28 20);
   --accent-foreground: oklch(0.99 0 0);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.99 0 0);
-  --border: oklch(0.9 0.01 250);
-  --input: oklch(0.9 0.01 250);
-  --ring: oklch(0.45 0.15 250);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
+  --border: oklch(0.22 0.02 260);
+  --input: oklch(0.2 0.02 260);
+  --ring: oklch(0.35 0.25 260);
+  --chart-1: oklch(0.68 0.28 20);
+  --chart-2: oklch(0.75 0.22 80);
+  --chart-3: oklch(0.35 0.25 260);
+  --chart-4: oklch(0.646 0.222 41.116);
   --chart-5: oklch(0.769 0.188 70.08);
   --radius: 0.5rem;
 }
 
 .dark {
-  --background: oklch(0.12 0.01 250);
+  --background: oklch(0.1 0.01 260);
   --foreground: oklch(0.97 0 0);
-  --card: oklch(0.15 0.01 250);
+  --card: oklch(0.15 0.01 260);
   --card-foreground: oklch(0.97 0 0);
-  --popover: oklch(0.15 0.01 250);
+  --popover: oklch(0.15 0.01 260);
   --popover-foreground: oklch(0.97 0 0);
-  --primary: oklch(0.55 0.18 250);
+  /* Primary: Azul mais claro para melhor contraste */
+  --primary: oklch(0.45 0.28 260);
   --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.22 0.02 250);
-  --secondary-foreground: oklch(0.97 0 0);
-  --muted: oklch(0.22 0.02 250);
-  --muted-foreground: oklch(0.6 0.03 250);
-  --accent: oklch(0.6 0.2 200);
+  /* Secondary: Laranja mantém a vibração */
+  --secondary: oklch(0.75 0.22 80);
+  --secondary-foreground: oklch(0.15 0 0);
+  --muted: oklch(0.22 0.02 260);
+  --muted-foreground: oklch(0.7 0.03 260);
+  /* Accent: Vermelho vibrante */
+  --accent: oklch(0.75 0.32 20);
   --accent-foreground: oklch(0.99 0 0);
   --destructive: oklch(0.396 0.141 25.723);
   --destructive-foreground: oklch(0.99 0 0);
-  --border: oklch(0.22 0.02 250);
-  --input: oklch(0.22 0.02 250);
-  --ring: oklch(0.55 0.18 250);
+  --border: oklch(0.22 0.02 260);
+  --input: oklch(0.2 0.02 260);
+  --ring: oklch(0.45 0.28 260);
 }
 
 @theme inline {

@@ -36,31 +36,42 @@ const features = [
 
 export function FeaturesSection() {
   return (
-    <section id="features" className="w-full py-12 md:py-24 lg:py-32 bg-muted/50">
+    <section id="features" className="w-full py-8 md:py-10 lg:py-12 bg-white">
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col items-center text-center space-y-4 mb-12">
-          <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl text-balance">
+          <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl text-balance text-slate-900">
             Tudo que você precisa em um só lugar
           </h2>
-          <p className="max-w-175 text-muted-foreground md:text-lg leading-relaxed">
+          <p className="max-w-175 text-slate-600 md:text-lg leading-relaxed">
             Ferramentas poderosas e intuitivas para simplificar a gestão do seu centro de formação.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {features.map((feature, index) => (
-            <Card key={index} className="border-border">
-              <CardHeader>
-                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                  <feature.icon className="h-6 w-6 text-primary" />
-                </div>
-                <CardTitle className="text-xl">{feature.title}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CardDescription className="text-base leading-relaxed">{feature.description}</CardDescription>
-              </CardContent>
-            </Card>
-          ))}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {features.map((feature, index) => {
+            const colors = [
+              "from-blue-500 to-blue-600",
+              "from-orange-500 to-orange-600",
+              "from-red-500 to-red-600",
+              "from-purple-500 to-purple-600",
+              "from-green-500 to-green-600",
+              "from-pink-500 to-pink-600",
+            ]
+            const bgColor = colors[index % colors.length]
+            return (
+              <Card key={index} className="card-treinix bg-white border-slate-200">
+                <CardHeader>
+                  <div className={`h-12 w-12 rounded-lg bg-linear-to-br ${bgColor} flex items-center justify-center mb-4`}>
+                    <feature.icon className="h-6 w-6 text-white" />
+                  </div>
+                  <CardTitle className="text-xl text-slate-900">{feature.title}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription className="text-base leading-relaxed text-slate-600">{feature.description}</CardDescription>
+                </CardContent>
+              </Card>
+            )
+          })}
         </div>
       </div>
     </section>
