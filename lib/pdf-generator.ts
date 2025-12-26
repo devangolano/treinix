@@ -367,3 +367,364 @@ export async function generateAlunoPDF(alunoData: AlunoFichaData) {
     throw error
   }
 }
+
+export async function generatePDF(
+  titulo: string,
+  dados: Array<{ [key: string]: string }>,
+  totais?: { 
+    totalCobrado?: number
+    totalRecebido?: number
+    totalParcial?: number
+    totalPendente?: number
+    formatCurrency?: (value: number) => string
+    centroData?: { nome: string; email: string; telefone: string; endereco: string; nif?: string }
+  }
+) {
+  try {
+    const pdfDoc = await PDFDocument.create()
+    let page = pdfDoc.addPage([595, 842]) // A4
+    const { width, height } = page.getSize()
+
+    const darkBlue = rgb(30 / 255, 58 / 255, 138 / 255) // #1e3a8a
+    const orange = rgb(249 / 255, 115 / 255, 22 / 255) // #f97316
+    const darkGray = rgb(50 / 255, 50 / 255, 50 / 255)
+    const mediumGray = rgb(100 / 255, 100 / 255, 100 / 255)
+    const lightGray = rgb(240 / 255, 240 / 255, 240 / 255)
+    const white = rgb(1, 1, 1)
+    const black = rgb(0, 0, 0)
+
+    const helveticaBold = await pdfDoc.embedFont("Helvetica-Bold")
+    const helvetica = await pdfDoc.embedFont("Helvetica")
+
+    let yPosition = 40
+
+    // ===== CABEÇALHO FORMAL COM DADOS DO CENTRO =====
+    // Dados do Centro
+    if (totais?.centroData) {
+      const centro = totais.centroData
+      
+      // Nome do Centro - em destaque
+      page.drawText((centro.nome || "Centro de Formação").toUpperCase(), {
+        x: 40,
+        y: height - yPosition,
+        size: 16,
+        color: darkBlue,
+        font: helveticaBold,
+      })
+      yPosition += 18
+
+      // Informações de contato - bem formatadas
+      if (centro.email) {
+        page.drawText(`Email: ${centro.email}`, {
+          x: 40,
+          y: height - yPosition,
+          size: 10,
+          color: darkGray,
+          font: helvetica,
+        })
+        yPosition += 12
+      }
+
+      if (centro.telefone) {
+        page.drawText(`Telefone: ${centro.telefone}`, {
+          x: 40,
+          y: height - yPosition,
+          size: 10,
+          color: darkGray,
+          font: helvetica,
+        })
+        yPosition += 12
+      }
+
+      if (centro.endereco) {
+        page.drawText(`Localização: ${centro.endereco}`, {
+          x: 40,
+          y: height - yPosition,
+          size: 10,
+          color: darkGray,
+          font: helvetica,
+        })
+        yPosition += 12
+      }
+
+      if (centro.nif) {
+        page.drawText(`NIF: ${centro.nif}`, {
+          x: 40,
+          y: height - yPosition,
+          size: 10,
+          color: darkGray,
+          font: helvetica,
+        })
+        yPosition += 12
+      }
+
+      yPosition += 8
+    }
+
+    // ===== RESUMO FINANCEIRO =====
+    if (totais && totais.formatCurrency) {
+      const formatCurrency = totais.formatCurrency
+
+      // Título
+      page.drawText("RESUMO FINANCEIRO", {
+        x: 40,
+        y: height - yPosition,
+        size: 12,
+        color: darkBlue,
+        font: helveticaBold,
+      })
+      yPosition += 20
+
+      // Layout 2x2 com caixas colorizadas
+      const boxWidth = (width - 80) / 2 - 8
+      const boxHeight = 50
+      const greenColor = rgb(16/255, 185/255, 129/255) // #10b981
+      const blueColor = rgb(59/255, 130/255, 246/255) // #3b82f6
+      const purpleColor = rgb(139/255, 92/255, 246/255) // #8b5cf6
+      const orangeColor = rgb(249/255, 115/255, 22/255) // #f97316
+
+      const items = [
+        { label: "Total Cobrado", value: totais.totalCobrado || 0, color: greenColor },
+        { label: "Já Recebido", value: totais.totalRecebido || 0, color: blueColor },
+        { label: "Recebido Parcial", value: totais.totalParcial || 0, color: purpleColor },
+        { label: "A Receber", value: totais.totalPendente || 0, color: orangeColor },
+      ]
+
+      let boxIndex = 0
+      for (let i = 0; i < 2; i++) {
+        for (let j = 0; j < 2; j++) {
+          const xBox = 40 + j * (boxWidth + 16)
+          const yBox = height - yPosition - i * (boxHeight + 12)
+          const item = items[boxIndex]
+
+          // Caixa de fundo com cor
+          page.drawRectangle({
+            x: xBox,
+            y: yBox - boxHeight,
+            width: boxWidth,
+            height: boxHeight,
+            color: item.color,
+            opacity: 0.15,
+          })
+
+          // Borda
+          page.drawRectangle({
+            x: xBox,
+            y: yBox - boxHeight,
+            width: boxWidth,
+            height: boxHeight,
+            borderColor: item.color,
+            borderWidth: 1.5,
+          })
+
+          // Label
+          page.drawText(item.label, {
+            x: xBox + 8,
+            y: yBox - 18,
+            size: 9,
+            color: item.color,
+            font: helveticaBold,
+          })
+
+          // Valor
+          page.drawText(formatCurrency(item.value), {
+            x: xBox + 8,
+            y: yBox - 35,
+            size: 13,
+            color: darkBlue,
+            font: helveticaBold,
+          })
+
+          boxIndex++
+        }
+      }
+
+      yPosition += 130
+    }
+
+    // ===== TABELA DE DETALHAMENTO =====
+    page.drawText("DETALHAMENTO DE PAGAMENTOS", {
+      x: 40,
+      y: height - yPosition,
+      size: 11,
+      color: darkBlue,
+      font: helveticaBold,
+    })
+    yPosition += 18
+
+    // Cabeçalhos da tabela
+    const colunas = Object.keys(dados[0] || {})
+    const colunasAbreviadas = {
+      aluno: "Aluno",
+      formacao: "Formação",
+      turma: "Turma",
+      valor: "Valor",
+      parcelas: "Parc.",
+      metodo: "Método",
+      data: "Data",
+      status: "Status",
+    }
+
+    const larguraColuna = (width - 80) / colunas.length
+
+    // Background para cabeçalhos
+    page.drawRectangle({
+      x: 40,
+      y: height - yPosition - 12,
+      width: width - 80,
+      height: 15,
+      color: darkBlue,
+    })
+
+    let xCol = 50
+    colunas.forEach((col) => {
+      const colLabel = (colunasAbreviadas as { [key: string]: string })[col] || col
+      page.drawText(colLabel, {
+        x: xCol,
+        y: height - yPosition - 10,
+        size: 8,
+        color: white,
+        font: helveticaBold,
+      })
+      xCol += larguraColuna
+    })
+
+    yPosition += 20
+
+    // Linhas de dados
+    let linhasNaPagina = 0
+    const linhasMaximasPorPagina = 35
+
+    dados.forEach((row, indexRow) => {
+      // Verificar se precisa de nova página
+      if (linhasNaPagina >= linhasMaximasPorPagina) {
+        page = pdfDoc.addPage([595, 842])
+        yPosition = 40
+        linhasNaPagina = 0
+
+        // Repetir cabeçalhos na nova página
+        page.drawRectangle({
+          x: 40,
+          y: height - yPosition - 12,
+          width: width - 80,
+          height: 15,
+          color: darkBlue,
+        })
+
+        let xHeaderCol = 50
+        colunas.forEach((col) => {
+          const colLabel = (colunasAbreviadas as { [key: string]: string })[col] || col
+          page.drawText(colLabel, {
+            x: xHeaderCol,
+            y: height - yPosition - 10,
+            size: 8,
+            color: white,
+            font: helveticaBold,
+          })
+          xHeaderCol += larguraColuna
+        })
+
+        yPosition += 20
+      }
+
+      // Cores alternadas para linhas
+      if (linhasNaPagina % 2 === 0) {
+        page.drawRectangle({
+          x: 40,
+          y: height - yPosition - 10,
+          width: width - 80,
+          height: 12,
+          color: lightGray,
+        })
+      }
+
+      // Dados da linha
+      xCol = 50
+      colunas.forEach((col) => {
+        const texto = String(row[col] || "")
+        const textoTruncado = texto.length > 12 ? texto.substring(0, 10) + "..." : texto
+
+        page.drawText(textoTruncado, {
+          x: xCol,
+          y: height - yPosition - 8,
+          size: 8,
+          color: black,
+        })
+        xCol += larguraColuna
+      })
+
+      yPosition += 12
+      linhasNaPagina += 1
+    })
+
+    // ===== RODAPÉ =====
+    const footerY = 20
+    const separadorY = 30
+
+    // Linha separadora no rodapé
+    page.drawRectangle({
+      x: 40,
+      y: footerY + separadorY,
+      width: width - 80,
+      height: 1,
+      color: mediumGray,
+    })
+
+    // Data e hora de geração
+    const dataAtual = new Date().toLocaleDateString("pt-AO", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    })
+    const horaAtual = new Date().toLocaleTimeString("pt-AO", {
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+
+    // Texto do rodapé - Data/Hora à esquerda
+    page.drawText(`Gerado em: ${dataAtual} às ${horaAtual}`, {
+      x: 40,
+      y: footerY + 15,
+      size: 7,
+      color: mediumGray,
+    })
+
+    // Sistema ao centro
+    const footerText = "Treinix - Sistema de Gestão de Centros de Formação"
+    const footerSize = 7
+    const estimatedCharWidth = footerText.length * (footerSize * 0.4)
+    const footerX = (width - estimatedCharWidth) / 2
+
+    page.drawText(footerText, {
+      x: footerX,
+      y: footerY + 15,
+      size: footerSize,
+      color: mediumGray,
+    })
+
+    // Página à direita
+    page.drawText(`Página ${pdfDoc.getPages().length}`, {
+      x: width - 80,
+      y: footerY + 15,
+      size: footerSize,
+      color: mediumGray,
+    })
+
+    // Salvar PDF
+    const pdfBytes = await pdfDoc.save()
+    const blob = new Blob([pdfBytes as BlobPart], { type: "application/pdf" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.download = `Relatorio_Pagamentos_${dataAtual.replace(/\//g, "-")}.pdf`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+
+    return true
+  } catch (error) {
+    console.error("Erro ao gerar PDF de relatório:", error)
+    throw error
+  }
+}

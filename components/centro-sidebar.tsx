@@ -53,6 +53,12 @@ const menuItems = [
     requiredRole: null, // Todos podem ver
   },
   {
+    title: "Relatórios",
+    icon: FileText,
+    href: "/dashboard/relatorios",
+    requiredRole: null, // Todos podem ver
+  },
+  {
     title: "Usuários",
     icon: UserCog,
     href: "/dashboard/usuarios",
