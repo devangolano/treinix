@@ -6,7 +6,7 @@ import { Check } from "lucide-react"
 const plans = [
   {
     name: "Mensal",
-    price: "15.000",
+    price: "5.000",
     period: "mês",
     description: "Ideal para começar",
     features: [
@@ -19,7 +19,7 @@ const plans = [
   },
   {
     name: "Trimestral",
-    price: "40.000",
+    price: "14.500",
     period: "3 meses",
     description: "Mais popular",
     popular: true,
@@ -34,7 +34,7 @@ const plans = [
   },
   {
     name: "Anual",
-    price: "150.000",
+    price: "50.000",
     period: "ano",
     description: "Melhor valor",
     features: [
