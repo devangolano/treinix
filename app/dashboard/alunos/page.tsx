@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/hooks/use-auth"
-import { alunoService, formacaoService, turmaService, pagamentoService, pagamentoInstallmentService } from "@/lib/supabase-services"
+import { alunoService, formacaoService, turmaService, pagamentoService, pagamentoInstallmentService, centroService } from "@/lib/supabase-services"
 import { CentroSidebar } from "@/components/centro-sidebar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -20,9 +20,11 @@ import {
   Filter,
   Eye,
   Mail,
+  FileText,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import type { Aluno, Formacao, Turma, Pagamento } from "@/lib/types"
+import { generateAlunoPDF } from "@/lib/pdf-generator"
+import type { Aluno, Formacao, Turma, Pagamento, Centro } from "@/lib/types"
 import { Separator } from "@/components/ui/separator"
 import { Spinner } from "@/components/ui/spinner"
 import Link from "next/link"
@@ -34,6 +36,7 @@ export default function AlunosPage() {
   const [formacoes, setFormacoes] = useState<Formacao[]>([])
   const [turmas, setTurmas] = useState<Turma[]>([])
   const [pagamentos, setPagamentos] = useState<Pagamento[]>([])
+  const [centro, setCentro] = useState<Centro | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [formacaoFilter, setFormacaoFilter] = useState<string>("all")
@@ -73,17 +76,19 @@ export default function AlunosPage() {
       setLoading(true)
       setError(null)
 
-      const [alunosData, formacoesData, turmasData, pagamentosData] = await Promise.all([
+      const [alunosData, formacoesData, turmasData, pagamentosData, centroData] = await Promise.all([
         alunoService.getAll(centroId),
         formacaoService.getAll(centroId),
         turmaService.getAll(centroId),
         pagamentoService.getAll(centroId),
+        centroService.getById(centroId),
       ])
 
       setAlunos(alunosData)
       setFormacoes(formacoesData)
       setTurmas(turmasData)
       setPagamentos(pagamentosData)
+      setCentro(centroData)
 
       // Calcular stats de prestações para cada pagamento
       const stats: Record<string, { paidCount: number; totalCount: number; percentage: number }> = {}
@@ -202,6 +207,63 @@ export default function AlunosPage() {
       if (user?.centroId) loadData(user.centroId)
     } catch (error) {
       toast({ title: "Erro ao excluir aluno", variant: "destructive" })
+    }
+  }
+
+  const handleDownloadFicha = async (aluno: Aluno) => {
+    try {
+      const formacao = formacoes.find((f) => f.id === aluno.formacaoId)
+      const turma = turmas.find((t) => t.id === aluno.turmaId)
+      const pagamento = pagamentos.find((p) => p.alunoId === aluno.id)
+
+      if (!formacao || !turma) {
+        toast({ title: "Erro", description: "Formação ou turma não encontrada", variant: "destructive" })
+        return
+      }
+
+      // Converter status de pagamento
+      let paymentStatus: "paid" | "half-paid" | "pending" = "pending"
+      if (pagamento) {
+        if (pagamento.status === "completed") {
+          paymentStatus = "paid"
+        } else if (pagamento.status === "partial") {
+          paymentStatus = "half-paid"
+        }
+      }
+
+      // Converter método de pagamento para formato legível
+      const paymentMethodMap: Record<string, string> = {
+        cash: "Dinheiro",
+        transfer: "Transferência Bancária",
+        multicaixa: "Multicaixa",
+      }
+
+      await generateAlunoPDF({
+        name: aluno.name,
+        email: aluno.email,
+        phone: aluno.phone,
+        bi: aluno.bi,
+        birthDate: aluno.birthDate,
+        address: aluno.address,
+        formacaoName: formacao.name,
+        turmaName: turma.name,
+        status: aluno.status,
+        createdAt: aluno.createdAt,
+        centroName: centro?.name,
+        centroEmail: centro?.email,
+        centroPhone: centro?.phone,
+        centroAddress: centro?.address,
+        paymentMethod: pagamento ? paymentMethodMap[pagamento.paymentMethod] || pagamento.paymentMethod : undefined,
+        paymentStatus: pagamento ? paymentStatus : "pending",
+        installmentsPaid: pagamento?.installmentsPaid,
+        totalInstallments: pagamento?.installments,
+        systemPhone: "948324028",
+      })
+
+      toast({ title: "Ficha baixada com sucesso!", description: `${aluno.name}.pdf` })
+    } catch (error) {
+      console.error("Erro ao gerar PDF:", error)
+      toast({ title: "Erro ao gerar PDF", variant: "destructive" })
     }
   }
 
@@ -350,14 +412,22 @@ export default function AlunosPage() {
 
                       <Separator className="my-4 bg-blue-700" />
 
-                      <div className="flex gap-3">
-                        <Link href={`/dashboard/alunos/${aluno.id}`} className="flex-1">
+                      <div className="flex gap-2 flex-wrap">
+                        <Link href={`/dashboard/alunos/${aluno.id}`} className="flex-1 min-w-fit">
                           <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700 text-white">
                             <Eye className="h-3 w-3 mr-2" />
-                            Ver Detalhes
+                            Ver
                           </Button>
                         </Link>
-                        <Link href={`/dashboard/alunos/${aluno.id}/editar`} className="flex-1">
+                        <Button 
+                          size="sm" 
+                          onClick={() => handleDownloadFicha(aluno)}
+                          className="flex-1 min-w-fit bg-green-600 hover:bg-green-700 text-white"
+                        >
+                          <FileText className="h-3 w-3 mr-2" />
+                          Ficha
+                        </Button>
+                        <Link href={`/dashboard/alunos/${aluno.id}/editar`} className="flex-1 min-w-fit">
                           <Button size="sm" variant="outline" className="w-full border-blue-700 text-blue-200 hover:bg-orange-500 hover:text-white hover:border-orange-500">
                             <Pencil className="h-3 w-3 mr-2" />
                             Editar

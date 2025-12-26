@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
-import { alunoService, formacaoService, turmaService, pagamentoService, pagamentoInstallmentService } from "@/lib/supabase-services"
+import { alunoService, formacaoService, turmaService, pagamentoService, pagamentoInstallmentService, centroService } from "@/lib/supabase-services"
 import { CentroSidebar } from "@/components/centro-sidebar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -22,9 +22,10 @@ import {
   Award as IdCard,
 } from "lucide-react"
 import Link from "next/link"
-import type { Aluno, Formacao, Turma, Pagamento } from "@/lib/types"
+import type { Aluno, Formacao, Turma, Pagamento, Centro } from "@/lib/types"
 import { useAuth } from "@/hooks/use-auth"
 import { useToast } from "@/hooks/use-toast"
+import { generateAlunoPDF } from "@/lib/pdf-generator"
 
 export default function DetalhesAlunoPage() {
   const router = useRouter()
@@ -35,6 +36,7 @@ export default function DetalhesAlunoPage() {
   const [aluno, setAluno] = useState<Aluno | null>(null)
   const [formacao, setFormacao] = useState<Formacao | null>(null)
   const [turma, setTurma] = useState<Turma | null>(null)
+  const [centro, setCentro] = useState<Centro | null>(null)
   const [pagamentos, setPagamentos] = useState<Pagamento[]>([])
   const [alunos, setAlunos] = useState<Aluno[]>([])
   const [loading, setLoading] = useState(true)
@@ -60,6 +62,10 @@ export default function DetalhesAlunoPage() {
       }
 
       setAluno(alunoData)
+
+      // Carregar dados do centro
+      const centroData = await centroService.getById(centroId)
+      setCentro(centroData || null)
 
       if (alunoData.formacaoId) {
         const formacaoData = await formacaoService.getById(alunoData.formacaoId)
@@ -116,194 +122,60 @@ export default function DetalhesAlunoPage() {
     return pagamento.status
   }
 
-  const handleDownloadPDF = () => {
-    if (!aluno) return
+  const handleDownloadPDF = async () => {
+    try {
+      if (!aluno || !formacao || !turma || !centro) {
+        toast({ title: "Erro", description: "Dados incompletos para gerar o PDF", variant: "destructive" })
+        return
+      }
 
-    const printWindow = window.open("", "_blank")
-    if (!printWindow) return
+      // Obter dados de pagamento
+      const pagamento = pagamentos.length > 0 ? pagamentos[0] : null
 
-    const statusText = aluno.status === "active" ? "Ativo" : "Inativo"
-    const statusColor = aluno.status === "active" ? "#10b981" : "#ef4444"
-
-    const totalPago = pagamentos.reduce((sum, p) => sum + (p.amount * p.installmentsPaid) / p.installments, 0)
-
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Ficha do Aluno - ${aluno.name}</title>
-        <style>
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { font-family: Arial, sans-serif; padding: 40px; line-height: 1.6; color: #333; }
-          .header { text-align: center; margin-bottom: 30px; border-bottom: 3px solid #2563eb; padding-bottom: 20px; }
-          .header h1 { color: #2563eb; font-size: 28px; margin-bottom: 5px; }
-          .header p { color: #666; font-size: 14px; }
-          .section { margin-bottom: 25px; }
-          .section-title { 
-            font-size: 18px; 
-            font-weight: bold; 
-            color: #2563eb; 
-            margin-bottom: 15px; 
-            padding-bottom: 8px;
-            border-bottom: 2px solid #e5e7eb;
-          }
-          .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-          .info-item { margin-bottom: 10px; }
-          .info-label { font-weight: bold; color: #555; font-size: 13px; display: block; margin-bottom: 3px; }
-          .info-value { color: #333; font-size: 14px; }
-          .status-badge {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: bold;
-            color: white;
-            background-color: ${statusColor};
-          }
-          .footer { 
-            margin-top: 50px; 
-            padding-top: 20px; 
-            border-top: 2px solid #e5e7eb; 
-            text-align: center; 
-            color: #666;
-            font-size: 12px;
-          }
-          @media print {
-            body { padding: 20px; }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h1>Formação-Ao</h1>
-          <p>Ficha do Aluno</p>
-        </div>
-
-        <div class="section">
-          <div class="section-title">Informações Pessoais</div>
-          <div class="info-grid">
-            <div class="info-item">
-              <span class="info-label">Nome Completo</span>
-              <span class="info-value">${aluno.name}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Status</span>
-              <span class="status-badge">${statusText}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Email</span>
-              <span class="info-value">${aluno.email}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Telefone</span>
-              <span class="info-value">${aluno.phone}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">BI</span>
-              <span class="info-value">${aluno.bi}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Data de Nascimento</span>
-              <span class="info-value">${new Date(aluno.birthDate).toLocaleDateString("pt-AO")}</span>
-            </div>
-            <div class="info-item" style="grid-column: 1 / -1;">
-              <span class="info-label">Endereço</span>
-              <span class="info-value">${aluno.address}</span>
-            </div>
-          </div>
-        </div>
-
-        ${
-          formacao
-            ? `
-          <div class="section">
-            <div class="section-title">Formação Matriculada</div>
-            <div class="info-grid">
-              <div class="info-item">
-                <span class="info-label">Curso</span>
-                <span class="info-value">${formacao.name}</span>
-              </div>
-              <div class="info-item">
-                <span class="info-label">Categoria</span>
-                <span class="info-value">${formacao.category}</span>
-              </div>
-              <div class="info-item">
-                <span class="info-label">Duração</span>
-                <span class="info-value">${formacao.duration}h</span>
-              </div>
-              <div class="info-item">
-                <span class="info-label">Valor</span>
-                <span class="info-value">${formacao.price.toLocaleString("pt-AO")} Kz</span>
-              </div>
-            </div>
-          </div>
-        `
-            : ""
+      // Converter status de pagamento
+      let paymentStatus: "paid" | "half-paid" | "pending" = "pending"
+      if (pagamento) {
+        if (pagamento.status === "completed") {
+          paymentStatus = "paid"
+        } else if (pagamento.status === "partial") {
+          paymentStatus = "half-paid"
         }
+      }
 
-        ${
-          turma
-            ? `
-          <div class="section">
-            <div class="section-title">Turma</div>
-            <div class="info-grid">
-              <div class="info-item">
-                <span class="info-label">Nome da Turma</span>
-                <span class="info-value">${turma.name}</span>
-              </div>
-              <div class="info-item">
-                <span class="info-label">Horário</span>
-                <span class="info-value">${turma.schedule}</span>
-              </div>
-              <div class="info-item">
-                <span class="info-label">Data de Início</span>
-                <span class="info-value">${new Date(turma.startDate).toLocaleDateString("pt-AO")}</span>
-              </div>
-              <div class="info-item">
-                <span class="info-label">Data de Término</span>
-                <span class="info-value">${new Date(turma.endDate).toLocaleDateString("pt-AO")}</span>
-              </div>
-            </div>
-          </div>
-        `
-            : ""
-        }
+      // Converter método de pagamento para formato legível
+      const paymentMethodMap: Record<string, string> = {
+        cash: "Dinheiro",
+        transfer: "Transferência Bancária",
+        multicaixa: "Multicaixa",
+      }
 
-        ${
-          pagamentos.length > 0
-            ? `
-          <div class="section">
-            <div class="section-title">Histórico de Pagamentos</div>
-            <div class="info-grid">
-              <div class="info-item">
-                <span class="info-label">Total de Pagamentos</span>
-                <span class="info-value">${pagamentos.length}</span>
-              </div>
-              <div class="info-item">
-                <span class="info-label">Valor Total Pago</span>
-                <span class="info-value">${totalPago.toLocaleString("pt-AO")} Kz</span>
-              </div>
-            </div>
-          </div>
-        `
-            : ""
-        }
+      await generateAlunoPDF({
+        name: aluno.name,
+        email: aluno.email,
+        phone: aluno.phone,
+        bi: aluno.bi,
+        birthDate: aluno.birthDate,
+        address: aluno.address,
+        formacaoName: formacao.name,
+        turmaName: turma.name,
+        status: aluno.status,
+        createdAt: aluno.createdAt,
+        centroName: centro.name,
+        centroEmail: centro.email,
+        centroPhone: centro.phone,
+        centroAddress: centro.address,
+        paymentMethod: pagamento ? paymentMethodMap[pagamento.paymentMethod] || pagamento.paymentMethod : undefined,
+        paymentStatus: pagamento ? paymentStatus : "pending",
+        installmentsPaid: pagamento?.installmentsPaid,
+        totalInstallments: pagamento?.installments,
+        systemPhone: "Contacto: 948324028",
+      })
 
-        <div class="footer">
-          <p>Documento gerado em ${new Date().toLocaleDateString("pt-AO")} às ${new Date().toLocaleTimeString("pt-AO")}</p>
-          <p>Formação-Ao - Sistema de Gestão de Centros de Formação</p>
-        </div>
-
-        <script>
-          window.onload = function() {
-            window.print();
-          }
-        </script>
-      </body>
-      </html>
-    `)
-
-    printWindow.document.close()
+      toast({ title: "Ficha baixada com sucesso!", description: `${aluno.name}.pdf` })
+    } catch (error) {
+      console.error("Erro ao gerar PDF:", error)
+      toast({ title: "Erro ao gerar PDF", variant: "destructive" })
+    }
   }
 
   if (!currentUser || !aluno) return null

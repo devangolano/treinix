@@ -83,11 +83,28 @@ export default function NovoAlunoPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!currentUser?.centroId) return
+    
+    if (!currentUser?.centroId) {
+      toast({ title: "Erro", description: "Centro não identificado", variant: "destructive" })
+      return
+    }
+
+    // Validação básica
+    if (!formData.name || !formData.email || !formData.turmaId || !formData.formacaoId) {
+      toast({ title: "Erro", description: "Preencha todos os campos obrigatórios", variant: "destructive" })
+      return
+    }
 
     setLoading(true)
     try {
       const price = getFormacaoPrice(formData.formacaoId)
+      if (price <= 0) {
+        toast({ title: "Erro", description: "Formação não encontrada ou preço inválido", variant: "destructive" })
+        setLoading(false)
+        return
+      }
+
+      console.log("1. Criando aluno...")
       const novoAluno = await alunoService.create({
         centroId: currentUser.centroId,
         name: formData.name,
@@ -101,10 +118,15 @@ export default function NovoAlunoPage() {
         turmaId: formData.turmaId,
       })
 
-      if (!novoAluno) {
+      if (!novoAluno?.id) {
+        console.error("Falha na criação do aluno")
         toast({ title: "Erro ao cadastrar aluno", variant: "destructive" })
+        setLoading(false)
         return
       }
+
+      console.log("2. Aluno criado:", novoAluno.id)
+      console.log("3. Criando pagamento...")
 
       // Criar pagamento
       const installmentCount = Number(paymentData.installments) as 1 | 2
@@ -120,38 +142,78 @@ export default function NovoAlunoPage() {
         status: "pending",
       })
 
-      if (!novoPagamento) {
+      if (!novoPagamento?.id) {
+        console.error("Falha na criação do pagamento")
         toast({ title: "Erro ao criar pagamento", variant: "destructive" })
+        setLoading(false)
         return
       }
 
+      console.log("4. Pagamento criado:", novoPagamento.id)
+      console.log("5. Criando prestações...")
+
       // Criar prestações
       const dataInicio = new Date()
-      await pagamentoInstallmentService.createBatch(
+      const installmentsCreated = await pagamentoInstallmentService.createBatch(
         novoPagamento.id,
         installmentCount,
         price,
         dataInicio
       )
 
-      // Se for 2 prestações, abrir dialog de pagamento obrigatório
-      if (installmentCount === 2) {
+      if (!installmentsCreated) {
+        console.error("Falha na criação das prestações")
+        toast({ title: "Erro ao criar prestações", variant: "destructive" })
+        setLoading(false)
+        return
+      }
+
+      console.log("6. Prestações criadas com sucesso")
+
+      // Se for pagamento à vista, marcar prestação como paga automaticamente
+      if (installmentCount === 1) {
+        console.log("7. Processando pagamento à vista...")
+        
+        // Obter a prestação criada
+        const installments = await pagamentoInstallmentService.getByPagamentoId(novoPagamento.id)
+        
+        if (installments && installments.length > 0) {
+          console.log("7a. Marcando prestação como paga...")
+          // Marcar primeira prestação como paga
+          await pagamentoInstallmentService.markAsPaid(installments[0].id)
+          
+          // Atualizar pagamento para completed
+          console.log("7b. Atualizando status do pagamento...")
+          await pagamentoService.update(novoPagamento.id, {
+            status: "completed",
+            installmentsPaid: 1,
+          })
+        }
+        
+        toast({
+          title: "Aluno cadastrado com sucesso!",
+          description: "Pagamento registrado à vista.",
+        })
+        
+        setLoading(false)
+        setTimeout(() => {
+          console.log("8. Redirecionando para lista de alunos...")
+          router.push("/dashboard/alunos")
+        }, 500)
+      } else {
+        // Se for 2 prestações, abrir dialog de pagamento obrigatório
+        console.log("7. Abrindo dialog de pagamento...")
         setPaymentDialog({
           open: true,
           alunoData: novoAluno,
           pagamentoId: novoPagamento.id,
           installmentAmount: price / 2,
         })
-      } else {
-        toast({
-          title: "Aluno cadastrado com sucesso!",
-          description: "Pagamento registrado à vista.",
-        })
-        router.push("/dashboard/alunos")
+        setLoading(false)
       }
     } catch (error) {
       console.error("Erro ao cadastrar aluno:", error)
-      toast({ title: "Erro ao cadastrar aluno", variant: "destructive" })
+      toast({ title: "Erro ao cadastrar aluno", description: String(error), variant: "destructive" })
       setLoading(false)
     }
   }

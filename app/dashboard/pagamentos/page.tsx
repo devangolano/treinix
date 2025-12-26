@@ -279,11 +279,11 @@ export default function PagamentosPage() {
             </CardContent>
           </Card>
 
-          <Tabs defaultValue="pending" className="space-y-6">
+          <Tabs defaultValue="all" className="space-y-6">
             <TabsList>
+              <TabsTrigger value="all">Todos ({allFilteredPagamentos.length})</TabsTrigger>
               <TabsTrigger value="pending">Pendentes ({pendingPagamentos.length})</TabsTrigger>
               <TabsTrigger value="completed">Completos ({completedPagamentos.length})</TabsTrigger>
-              <TabsTrigger value="all">Todos ({allFilteredPagamentos.length})</TabsTrigger>
             </TabsList>
 
             <TabsContent value="pending" className="space-y-4">
