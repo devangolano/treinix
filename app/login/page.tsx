@@ -42,7 +42,10 @@ export default function LoginPage() {
       const result = await login(email, password)
 
       if (result.success && result.user) {
-        // Redirecionar baseado na role - sem delay, redirect é imediato
+        // Pequeno delay para garantir que o login foi processado
+        await new Promise(resolve => setTimeout(resolve, 500))
+        
+        // Redirecionar baseado na role
         if (result.user.role === "super_admin") {
           router.push("/super-admin")
         } else {
@@ -51,11 +54,11 @@ export default function LoginPage() {
         }
       } else {
         setError("Email ou senha incorretos.")
+        setLoading(false)
       }
     } catch (err) {
       setError("Erro ao fazer login. Tente novamente.")
       console.error(err)
-    } finally {
       setLoading(false)
     }
   }

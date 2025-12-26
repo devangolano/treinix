@@ -32,7 +32,6 @@ export const metadata: Metadata = {
   formatDetection: {
     telephone: false,
   },
-  manifest: "/manifest.json",
   icons: {
     icon: "/icon.png",
     apple: "/apple-icon.png",
