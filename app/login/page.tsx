@@ -21,6 +21,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+  const [isRedirecting, setIsRedirecting] = useState(false)
 
   // Redirecionar se já estiver logado
   useEffect(() => {
@@ -37,29 +38,39 @@ export default function LoginPage() {
     e.preventDefault()
     setError("")
     setLoading(true)
+    setIsRedirecting(false)
 
     try {
       const result = await login(email, password)
 
       if (result.success && result.user) {
-        // Pequeno delay para garantir que o login foi processado
-        await new Promise(resolve => setTimeout(resolve, 500))
+        setIsRedirecting(true)
+        // Delay maior para garantir que o login foi processado completamente
+        // e que a sessão está estabelecida no navegador
+        await new Promise(resolve => setTimeout(resolve, 1000))
         
         // Redirecionar baseado na role
-        if (result.user.role === "super_admin") {
-          router.push("/super-admin")
-        } else {
-          // Para secretario e centro_admin
-          router.push("/dashboard")
-        }
+        const redirectUrl = result.user.role === "super_admin" ? "/super-admin" : "/dashboard"
+        
+        // Usar replace em vez de push para evitar voltar para login
+        router.replace(redirectUrl)
+        
+        // Fallback em caso de problema com router.replace
+        setTimeout(() => {
+          if (!isRedirecting) {
+            window.location.href = redirectUrl
+          }
+        }, 2000)
       } else {
         setError("Email ou senha incorretos.")
         setLoading(false)
+        setIsRedirecting(false)
       }
     } catch (err) {
       setError("Erro ao fazer login. Tente novamente.")
       console.error(err)
       setLoading(false)
+      setIsRedirecting(false)
     }
   }
 
@@ -126,8 +137,8 @@ export default function LoginPage() {
               />
             </div>
 
-            <Button type="submit" className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold" disabled={loading}>
-              {loading ? "Entrando..." : "Entrar"}
+            <Button type="submit" className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold" disabled={loading || isRedirecting}>
+              {loading ? "Entrando..." : isRedirecting ? "Redirecionando..." : "Entrar"}
             </Button>
 
             <div className="text-center text-sm">

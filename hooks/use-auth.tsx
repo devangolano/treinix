@@ -49,17 +49,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const login = async (email: string, password: string) => {
-    const result = await signIn(email, password)
-    if (result.success && result.data) {
-      // Buscar o perfil do usuário imediatamente após o login bem-sucedido
-      const profile = await getUserProfile(result.data.id)
-      if (profile) {
-        setUser(profile)
-        return { success: true, user: profile }
+    try {
+      const result = await signIn(email, password)
+      if (result.success && result.data) {
+        console.log("Login bem-sucedido para:", email)
+        
+        // Buscar o perfil do usuário imediatamente após o login bem-sucedido
+        const profile = await getUserProfile(result.data.id)
+        if (profile) {
+          console.log("Perfil do usuário carregado:", profile.id, profile.role)
+          setUser(profile)
+          return { success: true, user: profile }
+        }
+        console.error("Falha ao carregar perfil do usuário")
+        return { success: false }
+      } else {
+        console.error("Erro no login:", result.error)
+        return { success: false }
       }
-      return { success: false }
-    } else {
-      console.error(result.error)
+    } catch (error) {
+      console.error("Erro na autenticação:", error)
       return { success: false }
     }
   }
