@@ -16,21 +16,21 @@ export default function BlockedPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/50 p-4">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-slate-900 p-4">
+      <Card className="w-full max-w-md bg-blue-900/30 border-blue-800">
         <CardHeader className="text-center space-y-4">
-          <div className="mx-auto h-16 w-16 rounded-full bg-destructive/10 flex items-center justify-center">
-            <AlertTriangle className="h-8 w-8 text-destructive" />
+          <div className="mx-auto h-16 w-16 rounded-full bg-orange-500/20 flex items-center justify-center">
+            <AlertTriangle className="h-8 w-8 text-orange-400" />
           </div>
           <div>
-            <CardTitle className="text-2xl">Subscrição Expirada</CardTitle>
-            <CardDescription>Renove sua subscrição para continuar usando a plataforma</CardDescription>
+            <CardTitle className="text-2xl text-white">Subscrição Expirada</CardTitle>
+            <CardDescription className="text-blue-300">Renove sua subscrição para continuar usando a plataforma</CardDescription>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="bg-muted p-4 rounded-lg space-y-2">
-            <h3 className="font-semibold text-sm">Como renovar:</h3>
-            <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+          <div className="bg-blue-800/40 border border-blue-700 p-4 rounded-lg space-y-2">
+            <h3 className="font-semibold text-sm text-blue-200">Como renovar:</h3>
+            <ul className="text-sm text-blue-300 space-y-1 list-disc list-inside">
               <li>Escolha seu plano de subscrição</li>
               <li>Aguarde aprovação do Super Admin</li>
               <li>Volte a ter acesso completo</li>
@@ -38,13 +38,13 @@ export default function BlockedPage() {
           </div>
 
           <div className="space-y-2">
-            <Button className="w-full" asChild>
+            <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold" asChild>
               <Link href="/dashboard/subscription">Renovar Agora</Link>
             </Button>
-            <Button variant="outline" className="w-full bg-transparent" asChild>
+            <Button variant="outline" className="w-full border-blue-700 text-blue-200 hover:bg-orange-500/20 hover:text-orange-400 hover:border-orange-500" asChild>
               <Link href="mailto:suporte@formacao-ao.com">Contactar Suporte</Link>
             </Button>
-            <Button variant="ghost" className="w-full" onClick={handleLogout}>
+            <Button variant="ghost" className="w-full text-blue-300 hover:text-orange-400 hover:bg-blue-900/30" onClick={handleLogout}>
               Sair
             </Button>
           </div>

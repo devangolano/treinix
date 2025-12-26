@@ -78,87 +78,90 @@ export default function NovoUsuarioPage() {
   if (!currentUser) return null
 
   return (
-    <div className="flex h-screen flex-col md:flex-row">
+    <div className="flex h-screen flex-col md:flex-row bg-slate-900">
       <CentroSidebar />
 
-      <div className="flex-1 overflow-auto pt-16 md:pt-0">
+      <div className="flex-1 overflow-auto pt-16 md:pt-0 bg-slate-900">
         <div className="container max-w-2xl py-6 md:py-8 px-4 md:px-6">
           <Link href="/dashboard/usuarios">
-            <Button variant="ghost" size="sm" className="mb-4">
+            <Button variant="ghost" size="sm" className="mb-4 text-blue-300 hover:text-orange-400 hover:bg-blue-900/30">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Voltar
             </Button>
           </Link>
 
-          <Card>
+          <Card className="bg-blue-900/30 border-blue-800">
             <CardHeader>
-              <CardTitle>Criar Novo Usuário</CardTitle>
+              <CardTitle className="text-white text-2xl">Criar Novo Usuário</CardTitle>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Nome Completo</Label>
+                  <Label htmlFor="name" className="text-blue-200 font-semibold">Nome Completo</Label>
                   <Input
                     id="name"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="Ex: Maria Silva"
+                    placeholder="Ex: João da Silva Santos"
+                    className="bg-blue-800/40 border-blue-700 text-white placeholder:text-blue-300 focus:border-orange-500 focus:ring-orange-500"
                     required
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email" className="text-blue-200 font-semibold">Email</Label>
                   <Input
                     id="email"
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    placeholder="maria@exemplo.com"
+                    placeholder="usuario@seucentro.com"
+                    className="bg-blue-800/40 border-blue-700 text-white placeholder:text-blue-300 focus:border-orange-500 focus:ring-orange-500"
                     required
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="password">Senha</Label>
+                  <Label htmlFor="password" className="text-blue-200 font-semibold">Senha</Label>
                   <Input
                     id="password"
                     type="password"
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    placeholder="Mínimo 6 caracteres"
+                    placeholder="Será gerada automaticamente se deixado em branco"
+                    className="bg-blue-800/40 border-blue-700 text-white placeholder:text-blue-300 focus:border-orange-500 focus:ring-orange-500"
                     minLength={6}
-                    required
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Telefone</Label>
+                  <Label htmlFor="phone" className="text-blue-200 font-semibold">Telefone</Label>
                   <Input
                     id="phone"
                     type="tel"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    placeholder="Ex: +244 912 345 678"
+                    placeholder="Ex: +244 912 345 678 ou 912345678"
+                    className="bg-blue-800/40 border-blue-700 text-white placeholder:text-blue-300 focus:border-orange-500 focus:ring-orange-500"
                     required
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="role">Função</Label>
+                  <Label htmlFor="role" className="text-blue-200 font-semibold">Função</Label>
                   <Select
                     value={formData.role}
                     onValueChange={(value: "centro_admin" | "secretario") => setFormData({ ...formData, role: value })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-blue-800/40 border-blue-700 text-white">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-blue-900 border-blue-800">
                       <SelectItem value="centro_admin">Administrador</SelectItem>
                       <SelectItem value="secretario">Secretário/a</SelectItem>
                     </SelectContent>
                   </Select>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-blue-300">
                     {formData.role === "centro_admin"
                       ? "Acesso total ao sistema, incluindo criação de usuários"
                       : "Acesso limitado: pode gerenciar alunos, turmas e pagamentos"}
@@ -166,11 +169,11 @@ export default function NovoUsuarioPage() {
                 </div>
 
                 <div className="flex gap-3 pt-4">
-                  <Button type="submit" disabled={loading} className="flex-1">
+                  <Button type="submit" disabled={loading} className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-semibold">
                     {loading ? "Criando..." : "Criar Usuário"}
                   </Button>
                   <Link href="/dashboard/usuarios" className="flex-1">
-                    <Button type="button" variant="outline" className="w-full bg-transparent">
+                    <Button type="button" variant="outline" className="w-full border-blue-700 text-blue-200 hover:bg-orange-500 hover:text-white hover:border-orange-500">
                       Cancelar
                     </Button>
                   </Link>

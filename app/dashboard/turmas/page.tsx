@@ -98,7 +98,7 @@ export default function TurmasPage() {
 
   if (!currentUser || loading) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="flex h-screen items-center justify-center bg-slate-900">
         <Spinner />
       </div>
     )
@@ -115,19 +115,19 @@ export default function TurmasPage() {
   }
 
   return (
-    <div className="flex h-screen flex-col md:flex-row">
+    <div className="flex h-screen flex-col md:flex-row bg-slate-900">
       <CentroSidebar />
 
-      <div className="flex-1 overflow-auto pt-16 md:pt-0">
+      <div className="flex-1 overflow-auto pt-16 md:pt-0 bg-slate-900">
         <div className="container max-w-7xl py-6 md:py-8 px-4 md:px-6">
           <div className="flex items-center justify-between mb-6 md:mb-8">
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold">Turmas</h1>
-              <p className="text-muted-foreground">Gerencie as turmas do seu centro</p>
+              <h1 className="text-2xl md:text-3xl font-bold text-white">Turmas</h1>
+              <p className="text-blue-200">Gerencie as turmas do seu centro</p>
             </div>
 
             <Link href="/dashboard/turmas/nova">
-              <Button>
+              <Button className="bg-orange-500 hover:bg-orange-600 text-white font-semibold">
                 <Plus className="h-4 w-4 mr-2" />
                 Nova Turma
               </Button>
@@ -136,25 +136,25 @@ export default function TurmasPage() {
 
           <div className="space-y-6">
             {turmas.length === 0 ? (
-              <Card>
+              <Card className="bg-blue-900/30 border-blue-800">
                 <CardContent className="py-12 text-center">
-                  <p className="text-muted-foreground">Nenhuma turma cadastrada</p>
+                  <p className="text-blue-300">Nenhuma turma cadastrada</p>
                 </CardContent>
               </Card>
             ) : (
               turmas.map((turma) => {
                 const statusConfig = getStatusBadge(turma.status)
                 return (
-                  <Card key={turma.id} className="hover:shadow-md transition-shadow">
+                  <Card key={turma.id} className="hover:shadow-md transition-shadow bg-blue-900/30 border-blue-800 hover:border-orange-500">
                     <CardHeader className="pb-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="space-y-2">
-                          <CardTitle className="text-xl">{turma.name}</CardTitle>
-                          <p className="text-sm text-muted-foreground font-medium">
+                          <CardTitle className="text-xl text-white">{turma.name}</CardTitle>
+                          <p className="text-sm text-blue-200 font-medium">
                             {getFormacaoName(turma.formacaoId)}
                           </p>
                         </div>
-                        <Badge variant={statusConfig.variant} className="shrink-0">
+                        <Badge variant={statusConfig.variant} className="shrink-0 bg-orange-500 text-white border-orange-600">
                           {statusConfig.label}
                         </Badge>
                       </div>
@@ -162,41 +162,41 @@ export default function TurmasPage() {
                     <CardContent className="space-y-5">
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         <div className="flex items-center gap-3">
-                          <Calendar className="h-5 w-5 text-muted-foreground shrink-0" />
+                          <Calendar className="h-5 w-5 text-blue-400 shrink-0" />
                           <div>
-                            <p className="text-xs text-muted-foreground">Período</p>
-                            <p className="text-sm font-medium">
+                            <p className="text-xs text-blue-300">Período</p>
+                            <p className="text-sm font-medium text-white">
                               {turma.startDate.toLocaleDateString("pt-AO")} -{" "}
                               {turma.endDate.toLocaleDateString("pt-AO")}
                             </p>
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
-                          <Clock className="h-5 w-5 text-muted-foreground shrink-0" />
+                          <Clock className="h-5 w-5 text-blue-400 shrink-0" />
                           <div>
-                            <p className="text-xs text-muted-foreground">Horário</p>
-                            <p className="text-sm font-medium">{turma.schedule}</p>
+                            <p className="text-xs text-blue-300">Horário</p>
+                            <p className="text-sm font-medium text-white">{turma.schedule}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
-                          <UsersIcon className="h-5 w-5 text-muted-foreground shrink-0" />
+                          <UsersIcon className="h-5 w-5 text-blue-400 shrink-0" />
                           <div>
-                            <p className="text-xs text-muted-foreground">Vagas</p>
-                            <p className="text-sm font-medium">
+                            <p className="text-xs text-blue-300">Vagas</p>
+                            <p className="text-sm font-medium text-white">
                               {getAlunosPorTurma(turma.id)}/{turma.maxStudents} alunos
                             </p>
                           </div>
                         </div>
                       </div>
 
-                      <div className="flex gap-3 pt-3 border-t">
+                      <div className="flex gap-3 pt-3 border-t border-blue-700">
                         <Link href={`/dashboard/turmas/${turma.id}/editar`} className="flex-1">
-                          <Button size="sm" variant="outline" className="w-full bg-transparent">
+                          <Button size="sm" variant="outline" className="w-full border-blue-700 text-blue-200 hover:bg-orange-500 hover:text-white hover:border-orange-500">
                             <Pencil className="h-3 w-3 mr-2" />
                             Editar
                           </Button>
                         </Link>
-                        <Button size="sm" variant="destructive" onClick={() => handleDelete(turma.id)}>
+                        <Button size="sm" variant="destructive" onClick={() => handleDelete(turma.id)} className="bg-red-600 hover:bg-red-700">
                           <Trash2 className="h-3 w-3 mr-2" />
                           Excluir
                         </Button>

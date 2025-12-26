@@ -46,98 +46,98 @@ export default function SuperAdminDashboard() {
 
   if (loading) {
     return (
-      <div className="flex h-screen">
+      <div className="flex h-screen bg-slate-900">
         <SuperAdminSidebar />
-        <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+        <div className="flex-1 flex items-center justify-center bg-slate-900">
+          <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
         </div>
       </div>
     )
   }
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen bg-slate-900">
       <SuperAdminSidebar />
 
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto bg-slate-900">
         <div className="container py-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold">Dashboard Super Admin</h1>
-            <p className="text-muted-foreground">Visão geral da plataforma</p>
+            <h1 className="text-3xl font-bold text-white">Dashboard Super Admin</h1>
+            <p className="text-blue-300">Visão geral da plataforma</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <Card>
+            <Card className="bg-blue-900/30 border-blue-800">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Total de Centros</CardTitle>
-                <Building2 className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium text-white">Total de Centros</CardTitle>
+                <Building2 className="h-4 w-4 text-orange-400" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.totalCentros}</div>
-                <p className="text-xs text-muted-foreground">Centros registrados</p>
+                <div className="text-2xl font-bold text-white">{stats.totalCentros}</div>
+                <p className="text-xs text-blue-300">Centros registrados</p>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="bg-blue-900/30 border-blue-800">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Centros Ativos</CardTitle>
-                <CheckCircle className="h-4 w-4 text-green-600" />
+                <CardTitle className="text-sm font-medium text-white">Centros Ativos</CardTitle>
+                <CheckCircle className="h-4 w-4 text-green-400" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-green-600">{stats.activeCentros}</div>
-                <p className="text-xs text-muted-foreground">Com subscrição ativa</p>
+                <div className="text-2xl font-bold text-green-400">{stats.activeCentros}</div>
+                <p className="text-xs text-blue-300">Com subscrição ativa</p>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="bg-blue-900/30 border-blue-800">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Em Teste</CardTitle>
-                <Clock className="h-4 w-4 text-blue-600" />
+                <CardTitle className="text-sm font-medium text-white">Em Teste</CardTitle>
+                <Clock className="h-4 w-4 text-cyan-400" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-blue-600">{stats.trialCentros}</div>
-                <p className="text-xs text-muted-foreground">Período de teste</p>
+                <div className="text-2xl font-bold text-cyan-400">{stats.trialCentros}</div>
+                <p className="text-xs text-blue-300">Período de teste</p>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="bg-blue-900/30 border-blue-800">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Expirados</CardTitle>
-                <XCircle className="h-4 w-4 text-red-600" />
+                <CardTitle className="text-sm font-medium text-white">Expirados</CardTitle>
+                <XCircle className="h-4 w-4 text-red-400" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-red-600">{stats.expiredCentros}</div>
-                <p className="text-xs text-muted-foreground">Subscrição expirada</p>
+                <div className="text-2xl font-bold text-red-400">{stats.expiredCentros}</div>
+                <p className="text-xs text-blue-300">Subscrição expirada</p>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="bg-blue-900/30 border-blue-800">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Subscrições Pendentes</CardTitle>
-                <AlertCircle className="h-4 w-4 text-yellow-600" />
+                <CardTitle className="text-sm font-medium text-white">Subscrições Pendentes</CardTitle>
+                <AlertCircle className="h-4 w-4 text-orange-400" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-yellow-600">{stats.pendingSubscriptions}</div>
-                <p className="text-xs text-muted-foreground">Aguardando aprovação</p>
+                <div className="text-2xl font-bold text-orange-400">{stats.pendingSubscriptions}</div>
+                <p className="text-xs text-blue-300">Aguardando aprovação</p>
               </CardContent>
             </Card>
           </div>
 
           <div className="mt-8">
-            <Card>
+            <Card className="bg-blue-900/30 border-blue-800">
               <CardHeader>
-                <CardTitle>Ações Rápidas</CardTitle>
+                <CardTitle className="text-white">Ações Rápidas</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
                 <div className="flex items-center justify-between py-2">
-                  <span className="text-sm">Aprovar subscrições pendentes</span>
-                  <a href="/super-admin/subscriptions" className="text-sm text-primary hover:underline">
+                  <span className="text-sm text-blue-200">Aprovar subscrições pendentes</span>
+                  <a href="/super-admin/subscriptions" className="text-sm text-orange-400 hover:text-orange-300 hover:underline">
                     Ver todas →
                   </a>
                 </div>
                 <div className="flex items-center justify-between py-2">
-                  <span className="text-sm">Gerenciar centros</span>
-                  <a href="/super-admin/centros" className="text-sm text-primary hover:underline">
+                  <span className="text-sm text-blue-200">Gerenciar centros</span>
+                  <a href="/super-admin/centros" className="text-sm text-orange-400 hover:text-orange-300 hover:underline">
                     Ver todos →
                   </a>
                 </div>

@@ -5,9 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { SuperAdminSidebar } from "@/components/super-admin-sidebar"
+import { Spinner } from "@/components/ui/spinner"
 import { centroService } from "@/lib/supabase-services"
 import type { Centro } from "@/lib/types"
-import { Lock, Unlock, Phone, Mail, MapPin, Loader2 } from "lucide-react"
+import { Lock, Unlock, Phone, Mail, MapPin } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 export default function CentrosPage() {
@@ -91,41 +92,41 @@ export default function CentrosPage() {
 
   if (loading) {
     return (
-      <div className="flex h-screen">
+      <div className="flex h-screen bg-slate-900">
         <SuperAdminSidebar />
-        <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+        <div className="flex-1 flex items-center justify-center bg-slate-900">
+          <Spinner />
         </div>
       </div>
     )
   }
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen bg-slate-900">
       <SuperAdminSidebar />
 
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto bg-slate-900">
         <div className="container py-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold">Gestão de Centros</h1>
-            <p className="text-muted-foreground">Gerencie todos os centros de formação registrados</p>
+            <h1 className="text-3xl font-bold text-white">Gestão de Centros</h1>
+            <p className="text-blue-300">Gerencie todos os centros de formação registrados</p>
           </div>
 
           {centros.length === 0 ? (
-            <Card>
+            <Card className="bg-blue-900/30 border-blue-800">
               <CardContent className="py-8 text-center">
-                <p className="text-muted-foreground">Nenhum centro registrado</p>
+                <p className="text-blue-300">Nenhum centro registrado</p>
               </CardContent>
             </Card>
           ) : (
             <div className="space-y-4">
               {centros.map((centro) => (
-                <Card key={centro.id}>
+                <Card key={centro.id} className="bg-blue-900/30 border-blue-800">
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="space-y-1">
-                        <CardTitle className="text-xl">{centro.name}</CardTitle>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <CardTitle className="text-xl text-white">{centro.name}</CardTitle>
+                        <div className="flex items-center gap-4 text-sm text-blue-300">
                           <div className="flex items-center gap-1">
                             <Mail className="h-3 w-3" />
                             {centro.email}
@@ -142,20 +143,20 @@ export default function CentrosPage() {
                   <CardContent>
                     <div className="space-y-4">
                       <div className="flex items-start gap-2">
-                        <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
-                        <p className="text-sm">{centro.address}</p>
+                        <MapPin className="h-4 w-4 text-blue-400 mt-0.5" />
+                        <p className="text-sm text-blue-200">{centro.address}</p>
                       </div>
 
                       {centro.nif && (
                         <div className="text-sm">
-                          <p className="text-muted-foreground">NIF</p>
-                          <p className="font-mono">{centro.nif}</p>
+                          <p className="text-blue-300">NIF</p>
+                          <p className="font-mono text-white">{centro.nif}</p>
                         </div>
                       )}
 
                       <div className="text-sm">
-                        <p className="text-muted-foreground">Data de Criação</p>
-                        <p>{new Date(centro.createdAt).toLocaleDateString("pt-AO")}</p>
+                        <p className="text-blue-300">Data de Criação</p>
+                        <p className="text-white">{new Date(centro.createdAt).toLocaleDateString("pt-AO")}</p>
                       </div>
 
                       {centro.trialEndsAt && (

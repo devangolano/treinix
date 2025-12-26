@@ -82,7 +82,7 @@ export default function DashboardPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="flex h-screen items-center justify-center bg-slate-900">
         <Spinner />
       </div>
     )
@@ -93,18 +93,18 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex h-screen flex-col md:flex-row">
+    <div className="flex h-screen flex-col md:flex-row bg-slate-900">
       <CentroSidebar />
 
-      <div className="flex-1 overflow-auto pt-16 md:pt-0">
+      <div className="flex-1 overflow-auto pt-16 md:pt-0 bg-slate-900">
         <div className="container max-w-7xl py-6 md:py-8 px-4 md:px-6">
           {/* Alerta de subscrição */}
           {subscriptionInfo?.status === "trial" &&
             subscriptionInfo.daysRemaining &&
             subscriptionInfo.daysRemaining <= 1 && (
-              <Alert className="mb-6 border-yellow-600/50 bg-yellow-600/10">
-                <AlertCircle className="h-4 w-4 text-yellow-600" />
-                <AlertDescription className="flex items-center justify-between">
+              <Alert className="mb-6 border-orange-500/50 bg-orange-500/10">
+                <AlertCircle className="h-4 w-4 text-orange-500" />
+                <AlertDescription className="flex items-center justify-between text-orange-100">
                   <span>
                     <strong>Atenção:</strong> Seu período de teste termina em {subscriptionInfo.daysRemaining} dia
                     {subscriptionInfo.daysRemaining > 1 ? "s" : ""}.
@@ -112,7 +112,7 @@ export default function DashboardPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="ml-4 bg-transparent"
+                    className="ml-4 border-orange-500 text-orange-400 hover:bg-orange-500 hover:text-white hover:border-orange-500"
                     onClick={() => router.push("/dashboard/subscription")}
                   >
                     Renovar Agora
@@ -122,84 +122,84 @@ export default function DashboardPage() {
             )}
 
           <div className="mb-6 md:mb-8">
-            <h1 className="text-2xl md:text-3xl font-bold">Dashboard</h1>
-            <p className="text-muted-foreground">Bem-vindo de volta, {user.name}</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-white">Dashboard</h1>
+            <p className="text-blue-200">Bem-vindo de volta, {user.name}</p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-            <Card>
+            <Card className="bg-blue-900/30 border-blue-800 hover:border-orange-500 transition-colors">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Total de Alunos</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium text-blue-100">Total de Alunos</CardTitle>
+                <Users className="h-4 w-4 text-orange-400" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.totalAlunos}</div>
-                <p className="text-xs text-muted-foreground">Alunos ativos</p>
+                <div className="text-2xl font-bold text-white">{stats.totalAlunos}</div>
+                <p className="text-xs text-blue-300">Alunos ativos</p>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="bg-blue-900/30 border-blue-800 hover:border-orange-500 transition-colors">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Formações</CardTitle>
-                <GraduationCap className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium text-blue-100">Formações</CardTitle>
+                <GraduationCap className="h-4 w-4 text-orange-400" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.totalFormacoes}</div>
-                <p className="text-xs text-muted-foreground">Cursos disponíveis</p>
+                <div className="text-2xl font-bold text-white">{stats.totalFormacoes}</div>
+                <p className="text-xs text-blue-300">Cursos disponíveis</p>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="bg-blue-900/30 border-blue-800 hover:border-orange-500 transition-colors">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Turmas</CardTitle>
-                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium text-blue-100">Turmas</CardTitle>
+                <Calendar className="h-4 w-4 text-orange-400" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.totalTurmas}</div>
-                <p className="text-xs text-muted-foreground">Turmas ativas</p>
+                <div className="text-2xl font-bold text-white">{stats.totalTurmas}</div>
+                <p className="text-xs text-blue-300">Turmas ativas</p>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="bg-blue-900/30 border-blue-800 hover:border-orange-500 transition-colors">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Pagamentos</CardTitle>
-                <CreditCard className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium text-blue-100">Pagamentos</CardTitle>
+                <CreditCard className="h-4 w-4 text-orange-400" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.pagamentosPendentes}</div>
-                <p className="text-xs text-muted-foreground">Pendentes</p>
+                <div className="text-2xl font-bold text-white">{stats.pagamentosPendentes}</div>
+                <p className="text-xs text-blue-300">Pendentes</p>
               </CardContent>
             </Card>
           </div>
 
           {/* Atividade Recente */}
           <div className="mt-6 md:mt-8">
-            <Card>
+            <Card className="bg-blue-900/30 border-blue-800">
               <CardHeader>
-                <CardTitle>Ações Rápidas</CardTitle>
-                <p className="text-sm text-muted-foreground">Acesso rápido às principais funcionalidades</p>
+                <CardTitle className="text-white">Ações Rápidas</CardTitle>
+                <p className="text-sm text-blue-200">Acesso rápido às principais funcionalidades</p>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <Button variant="outline" className="h-auto flex-col gap-2 py-4 bg-transparent" asChild>
+                  <Button variant="outline" className="h-auto flex-col gap-2 py-4 border-blue-700 text-blue-200 hover:bg-orange-500 hover:text-white hover:border-orange-500" asChild>
                     <a href="/dashboard/alunos">
                       <Users className="h-6 w-6" />
                       <span>Adicionar Aluno</span>
                     </a>
                   </Button>
-                  <Button variant="outline" className="h-auto flex-col gap-2 py-4 bg-transparent" asChild>
+                  <Button variant="outline" className="h-auto flex-col gap-2 py-4 border-blue-700 text-blue-200 hover:bg-orange-500 hover:text-white hover:border-orange-500" asChild>
                     <a href="/dashboard/formacoes">
                       <GraduationCap className="h-6 w-6" />
                       <span>Nova Formação</span>
                     </a>
                   </Button>
-                  <Button variant="outline" className="h-auto flex-col gap-2 py-4 bg-transparent" asChild>
+                  <Button variant="outline" className="h-auto flex-col gap-2 py-4 border-blue-700 text-blue-200 hover:bg-orange-500 hover:text-white hover:border-orange-500" asChild>
                     <a href="/dashboard/turmas">
                       <Calendar className="h-6 w-6" />
                       <span>Criar Turma</span>
                     </a>
                   </Button>
-                  <Button variant="outline" className="h-auto flex-col gap-2 py-4 bg-transparent" asChild>
+                  <Button variant="outline" className="h-auto flex-col gap-2 py-4 border-blue-700 text-blue-200 hover:bg-orange-500 hover:text-white hover:border-orange-500" asChild>
                     <a href="/dashboard/pagamentos">
                       <CreditCard className="h-6 w-6" />
                       <span>Registrar Pagamento</span>

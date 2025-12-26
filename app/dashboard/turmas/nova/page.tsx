@@ -82,35 +82,35 @@ export default function NovaTurmaPage() {
   if (!currentUser) return null
 
   return (
-    <div className="flex h-screen flex-col md:flex-row">
+    <div className="flex h-screen flex-col md:flex-row bg-slate-900">
       <CentroSidebar />
 
-      <div className="flex-1 overflow-auto pt-16 md:pt-0">
+      <div className="flex-1 overflow-auto pt-16 md:pt-0 bg-slate-900">
         <div className="container max-w-3xl py-6 md:py-8 px-4 md:px-6">
           <Link href="/dashboard/turmas">
-            <Button variant="ghost" size="sm" className="mb-4">
+            <Button variant="ghost" size="sm" className="mb-4 text-blue-300 hover:text-orange-400 hover:bg-blue-900/30">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Voltar
             </Button>
           </Link>
 
-          <Card>
+          <Card className="bg-blue-900/30 border-blue-800">
             <CardHeader>
-              <CardTitle>Nova Turma</CardTitle>
+              <CardTitle className="text-white text-2xl">Nova Turma</CardTitle>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="formacaoId">Formação</Label>
+                  <Label htmlFor="formacaoId" className="text-blue-200 font-semibold">Formação</Label>
                   <Select
                     value={formData.formacaoId}
                     onValueChange={(value) => setFormData({ ...formData, formacaoId: value })}
                     required
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-blue-800/40 border-blue-700 text-white">
                       <SelectValue placeholder="Selecione uma formação" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-blue-900 border-blue-800">
                       {formacoes.map((formacao) => (
                         <SelectItem key={formacao.id} value={formacao.id}>
                           {formacao.name}
@@ -121,86 +121,93 @@ export default function NovaTurmaPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="name">Nome da Turma</Label>
+                  <Label htmlFor="name" className="text-blue-200 font-semibold">Nome da Turma</Label>
                   <Input
                     id="name"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     placeholder="Ex: Turma A - Manhã"
+                    className="bg-blue-800/40 border-blue-700 text-white placeholder:text-blue-300 focus:border-orange-500 focus:ring-orange-500"
                     required
                   />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="startDate">Data de Início</Label>
+                    <Label htmlFor="startDate" className="text-blue-200 font-semibold">Data de Início</Label>
                     <Input
                       id="startDate"
                       type="date"
                       value={formData.startDate}
                       onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                      className="bg-blue-800/40 border-blue-700 text-white placeholder:text-blue-300 focus:border-orange-500 focus:ring-orange-500"
                       required
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="endDate">Data de Término</Label>
+                    <Label htmlFor="endDate" className="text-blue-200 font-semibold">Data de Término</Label>
                     <Input
                       id="endDate"
                       type="date"
                       value={formData.endDate}
                       onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                      className="bg-blue-800/40 border-blue-700 text-white placeholder:text-blue-300 focus:border-orange-500 focus:ring-orange-500"
                       required
                     />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="schedule">Horário</Label>
+                  <Label htmlFor="schedule" className="text-blue-200 font-semibold">Horário</Label>
                   <Input
                     id="schedule"
                     placeholder="Ex: Segunda a Sexta, 18h-20h"
                     value={formData.schedule}
                     onChange={(e) => setFormData({ ...formData, schedule: e.target.value })}
+                    className="bg-blue-800/40 border-blue-700 text-white placeholder:text-blue-300 focus:border-orange-500 focus:ring-orange-500"
                     required
                   />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="maxStudents">Vagas Totais</Label>
+                    <Label htmlFor="maxStudents" className="text-blue-200 font-semibold">Vagas Totais</Label>
                     <Input
                       id="maxStudents"
                       type="number"
                       value={formData.maxStudents}
                       onChange={(e) => setFormData({ ...formData, maxStudents: e.target.value })}
                       placeholder="30"
+                      className="bg-blue-800/40 border-blue-700 text-white placeholder:text-blue-300 focus:border-orange-500 focus:ring-orange-500"
                       required
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="currentStudents">Alunos Matriculados</Label>
+                    <Label htmlFor="currentStudents" className="text-blue-200 font-semibold">Alunos Matriculados</Label>
                     <Input
                       id="currentStudents"
                       type="number"
                       value={formData.currentStudents}
                       onChange={(e) => setFormData({ ...formData, currentStudents: e.target.value })}
+                      placeholder="0"
+                      className="bg-blue-800/40 border-blue-700 text-white placeholder:text-blue-300 focus:border-orange-500 focus:ring-orange-500"
                       required
                     />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="status">Status</Label>
+                  <Label htmlFor="status" className="text-blue-200 font-semibold">Status</Label>
                   <Select
                     value={formData.status}
                     onValueChange={(value: any) => setFormData({ ...formData, status: value })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-blue-800/40 border-blue-700 text-white">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-blue-900 border-blue-800">
                       <SelectItem value="scheduled">Agendada</SelectItem>
                       <SelectItem value="in_progress">Em Andamento</SelectItem>
                       <SelectItem value="completed">Concluída</SelectItem>
@@ -210,11 +217,11 @@ export default function NovaTurmaPage() {
                 </div>
 
                 <div className="flex gap-3 pt-4">
-                  <Button type="submit" disabled={loading} className="flex-1">
+                  <Button type="submit" disabled={loading} className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-semibold">
                     {loading ? "Criando..." : "Criar Turma"}
                   </Button>
                   <Link href="/dashboard/turmas" className="flex-1">
-                    <Button type="button" variant="outline" className="w-full bg-transparent">
+                    <Button type="button" variant="outline" className="w-full border-blue-700 text-blue-200 hover:bg-orange-500 hover:text-white hover:border-orange-500">
                       Cancelar
                     </Button>
                   </Link>

@@ -6,9 +6,10 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { SuperAdminSidebar } from "@/components/super-admin-sidebar"
+import { Spinner } from "@/components/ui/spinner"
 import { centroService, subscriptionService } from "@/lib/supabase-services"
 import type { Subscription, Centro } from "@/lib/types"
-import { Check, X, Calendar, Clock, Loader2 } from "lucide-react"
+import { Check, X, Calendar, Clock } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 export default function SubscriptionsPage() {
@@ -126,10 +127,10 @@ export default function SubscriptionsPage() {
 
   if (loading) {
     return (
-      <div className="flex h-screen">
+      <div className="flex h-screen bg-slate-900">
         <SuperAdminSidebar />
-        <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+        <div className="flex-1 flex items-center justify-center bg-slate-900">
+          <Spinner />
         </div>
       </div>
     )

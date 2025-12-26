@@ -239,36 +239,36 @@ export default function PagamentosPage() {
   const allFilteredPagamentos = filterPagamentos(pagamentos)
 
   return (
-    <div className="flex h-screen flex-col md:flex-row">
+    <div className="flex h-screen flex-col md:flex-row bg-slate-900">
       <CentroSidebar />
 
-      <div className="flex-1 overflow-auto pt-16 md:pt-0">
+      <div className="flex-1 overflow-auto pt-16 md:pt-0 bg-slate-900">
         <div className="container max-w-7xl py-6 md:py-8 px-4 md:px-6">
           <div className="flex items-center justify-between mb-6 md:mb-8">
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold">Pagamentos</h1>
-              <p className="text-muted-foreground">Gerencie pagamentos e prestações</p>
+              <h1 className="text-2xl md:text-3xl font-bold text-white">Pagamentos</h1>
+              <p className="text-blue-200">Gerencie pagamentos e prestações</p>
             </div>
           </div>
 
-          <Card className="mb-6">
+          <Card className="mb-6 bg-blue-900/30 border-blue-800">
             <CardContent className="pt-6">
               <div className="flex flex-col md:flex-row gap-4">
                 <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-blue-400" />
                   <Input
                     placeholder="Buscar por aluno ou turma..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-9"
+                    className="pl-9 bg-blue-800/40 border-blue-700 text-white placeholder:text-blue-300 focus:border-orange-500 focus:ring-orange-500"
                   />
                 </div>
                 <Select value={methodFilter} onValueChange={setMethodFilter}>
-                  <SelectTrigger className="w-full md:w-45">
+                  <SelectTrigger className="w-full md:w-45 bg-blue-800/40 border-blue-700 text-white">
                     <Filter className="h-4 w-4 mr-2" />
                     <SelectValue placeholder="Método" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-blue-900 border-blue-800">
                     <SelectItem value="all">Todos Métodos</SelectItem>
                     <SelectItem value="cash">Dinheiro</SelectItem>
                     <SelectItem value="transfer">Transferência</SelectItem>
@@ -288,9 +288,9 @@ export default function PagamentosPage() {
 
             <TabsContent value="pending" className="space-y-4">
               {pendingPagamentos.length === 0 ? (
-                <Card>
+                <Card className="bg-blue-900/30 border-blue-800">
                   <CardContent className="py-12 text-center">
-                    <p className="text-muted-foreground">
+                    <p className="text-blue-300">
                       {pagamentos.filter((p) => p.status !== "completed" && p.status !== "cancelled").length === 0
                         ? "Nenhum pagamento pendente"
                         : "Nenhum pagamento encontrado com os filtros aplicados"}
@@ -302,16 +302,16 @@ export default function PagamentosPage() {
                   const statusConfig = getStatusBadge(pagamento.status)
                   const StatusIcon = statusConfig.icon
                   return (
-                    <Card key={pagamento.id} className="hover:shadow-md transition-shadow">
+                    <Card key={pagamento.id} className="bg-blue-900/30 border-blue-800 hover:border-orange-500 transition-colors">
                       <CardHeader className="pb-1">
                         <div className="flex items-start justify-between gap-3">
                           <div className="space-y-2">
-                            <CardTitle className="text-lg">{getAlunoName(pagamento.alunoId)}</CardTitle>
-                            <p className="text-sm text-muted-foreground font-medium">
+                            <CardTitle className="text-lg text-white">{getAlunoName(pagamento.alunoId)}</CardTitle>
+                            <p className="text-sm text-blue-300 font-medium">
                               {getTurmaName(pagamento.turmaId)}
                             </p>
                           </div>
-                          <Badge variant={statusConfig.variant} className="shrink-0">
+                          <Badge variant={statusConfig.variant} className="shrink-0 bg-orange-500 text-white border-orange-600">
                             <StatusIcon className="h-3 w-3 mr-1" />
                             {statusConfig.label}
                           </Badge>
@@ -320,18 +320,18 @@ export default function PagamentosPage() {
                       <CardContent className="">
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                           <div>
-                            <p className="text-xs text-muted-foreground mb-1">Valor Total</p>
-                            <p className="font-semibold text-lg">{pagamento.amount.toLocaleString("pt-AO")} Kz</p>
+                            <p className="text-xs text-blue-300 mb-1">Valor Total</p>
+                            <p className="font-semibold text-lg text-white">{pagamento.amount.toLocaleString("pt-AO")} Kz</p>
                           </div>
                           <div>
-                            <p className="text-xs text-muted-foreground mb-1">Prestações</p>
-                            <p className="font-semibold">
+                            <p className="text-xs text-blue-300 mb-1">Prestações</p>
+                            <p className="font-semibold text-white">
                               {getStats(pagamento.id).paidCount}/{pagamento.installments}
                             </p>
                           </div>
                           <div>
-                            <p className="text-xs text-muted-foreground mb-1">Método</p>
-                            <p className="font-semibold capitalize">
+                            <p className="text-xs text-blue-300 mb-1">Método</p>
+                            <p className="font-semibold capitalize text-white">
                               {pagamento.paymentMethod === "cash"
                                 ? "Dinheiro"
                                 : pagamento.paymentMethod === "transfer"
@@ -340,13 +340,13 @@ export default function PagamentosPage() {
                             </p>
                           </div>
                           <div>
-                            <p className="text-xs text-muted-foreground mb-1">Data</p>
-                            <p className="font-semibold text-sm">{pagamento.createdAt.toLocaleDateString("pt-AO")}</p>
+                            <p className="text-xs text-blue-300 mb-1">Data</p>
+                            <p className="font-semibold text-sm text-white">{pagamento.createdAt.toLocaleDateString("pt-AO")}</p>
                           </div>
                         </div>
 
-                        <div className="pt-3 border-t">
-                          <Button size="sm" variant="outline" onClick={() => handleViewInstallments(pagamento)}>
+                        <div className="pt-3 border-t border-blue-800">
+                          <Button size="sm" variant="outline" className="border-orange-500 text-orange-400 hover:bg-orange-500/20 hover:border-orange-400" onClick={() => handleViewInstallments(pagamento)}>
                             Ver Prestações
                           </Button>
                         </div>
@@ -359,9 +359,9 @@ export default function PagamentosPage() {
 
             <TabsContent value="completed" className="space-y-4">
               {completedPagamentos.length === 0 ? (
-                <Card>
+                <Card className="bg-blue-900/30 border-blue-800">
                   <CardContent className="py-12 text-center">
-                    <p className="text-muted-foreground">
+                    <p className="text-blue-300">
                       {pagamentos.filter((p) => p.status === "completed").length === 0
                         ? "Nenhum pagamento completo"
                         : "Nenhum pagamento encontrado com os filtros aplicados"}
@@ -373,23 +373,23 @@ export default function PagamentosPage() {
                   const statusConfig = getStatusBadge(pagamento.status)
                   const StatusIcon = statusConfig.icon
                   return (
-                    <Card key={pagamento.id} className="hover:shadow-md transition-shadow">
+                    <Card key={pagamento.id} className="bg-blue-900/30 border-blue-800 hover:border-orange-500 transition-colors">
                       <CardContent className="py-4">
                         <div className="flex items-center justify-between mb-3">
                           <div className="space-y-1">
-                            <p className="font-semibold">{getAlunoName(pagamento.alunoId)}</p>
-                            <p className="text-sm text-muted-foreground">{getTurmaName(pagamento.turmaId)}</p>
-                            <p className="text-sm font-semibold">{pagamento.amount.toLocaleString("pt-AO")} Kz</p>
-                            <p className="text-sm text-muted-foreground">
+                            <p className="font-semibold text-white">{getAlunoName(pagamento.alunoId)}</p>
+                            <p className="text-sm text-blue-300">{getTurmaName(pagamento.turmaId)}</p>
+                            <p className="text-sm font-semibold text-white">{pagamento.amount.toLocaleString("pt-AO")} Kz</p>
+                            <p className="text-sm text-blue-300">
                               {getStats(pagamento.id).paidCount}/{pagamento.installments} prestações
                             </p>
                           </div>
-                          <Badge variant={statusConfig.variant}>
+                          <Badge variant={statusConfig.variant} className="bg-green-500 text-white border-green-600">
                             <StatusIcon className="h-3 w-3 mr-1" />
                             {statusConfig.label}
                           </Badge>
                         </div>
-                        <Progress value={100} className="h-2" />
+                        <Progress value={100} className="h-2 bg-blue-800" />
                       </CardContent>
                     </Card>
                   )
@@ -399,9 +399,9 @@ export default function PagamentosPage() {
 
             <TabsContent value="all" className="space-y-4">
               {allFilteredPagamentos.length === 0 ? (
-                <Card>
+                <Card className="bg-blue-900/30 border-blue-800">
                   <CardContent className="py-12 text-center">
-                    <p className="text-muted-foreground">
+                    <p className="text-blue-300">
                       {pagamentos.length === 0
                         ? "Nenhum pagamento cadastrado"
                         : "Nenhum pagamento encontrado com os filtros aplicados"}
@@ -413,25 +413,25 @@ export default function PagamentosPage() {
                   const statusConfig = getStatusBadge(pagamento.status)
                   const StatusIcon = statusConfig.icon
                   return (
-                    <Card key={pagamento.id} className="hover:shadow-md transition-shadow">
+                    <Card key={pagamento.id} className="bg-blue-900/30 border-blue-800 hover:border-orange-500 transition-colors">
                       <CardContent className="py-4">
                         <div className="flex items-center justify-between mb-3">
                           <div className="space-y-1">
-                            <p className="font-semibold">{getAlunoName(pagamento.alunoId)}</p>
-                            <p className="text-sm text-muted-foreground">{getTurmaName(pagamento.turmaId)}</p>
-                            <p className="text-sm font-semibold">
+                            <p className="font-semibold text-white">{getAlunoName(pagamento.alunoId)}</p>
+                            <p className="text-sm text-blue-300">{getTurmaName(pagamento.turmaId)}</p>
+                            <p className="text-sm font-semibold text-white">
                               {pagamento.amount.toLocaleString("pt-AO")} Kz
                             </p>
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-sm text-blue-300">
                               {getStats(pagamento.id).paidCount}/{pagamento.installments} prestações
                             </p>
                           </div>
-                          <Badge variant={statusConfig.variant}>
+                          <Badge variant={statusConfig.variant} className="bg-orange-500 text-white border-orange-600">
                             <StatusIcon className="h-3 w-3 mr-1" />
                             {statusConfig.label}
                           </Badge>
                         </div>
-                        <Progress value={getStats(pagamento.id).percentage} className="h-2" />
+                        <Progress value={getStats(pagamento.id).percentage} className="h-2 bg-blue-800" />
                       </CardContent>
                     </Card>
                   )
@@ -447,18 +447,18 @@ export default function PagamentosPage() {
         open={installmentsDialog.open}
         onOpenChange={(open) => setInstallmentsDialog({ ...installmentsDialog, open })}
       >
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl bg-blue-900/40 border-blue-800">
           <DialogHeader>
-            <DialogTitle>Prestações do Pagamento</DialogTitle>
+            <DialogTitle className="text-white">Prestações do Pagamento</DialogTitle>
           </DialogHeader>
           {installmentsDialog.pagamento && (
             <div className="space-y-4">
-              <div className="bg-muted p-4 rounded-lg space-y-2">
-                <p className="font-semibold">{getAlunoName(installmentsDialog.pagamento.alunoId)}</p>
-                <p className="text-sm text-muted-foreground">{getTurmaName(installmentsDialog.pagamento.turmaId)}</p>
-                <p className="text-sm">
+              <div className="bg-blue-800/40 p-4 rounded-lg space-y-2 border border-blue-700">
+                <p className="font-semibold text-white">{getAlunoName(installmentsDialog.pagamento.alunoId)}</p>
+                <p className="text-sm text-blue-300">{getTurmaName(installmentsDialog.pagamento.turmaId)}</p>
+                <p className="text-sm text-blue-200">
                   Total:{" "}
-                  <span className="font-semibold">
+                  <span className="font-semibold text-white">
                     {installmentsDialog.pagamento.amount.toLocaleString("pt-AO")} Kz
                   </span>
                 </p>
@@ -466,30 +466,30 @@ export default function PagamentosPage() {
 
               <div className="space-y-3">
                 {installmentsDialog.installments.map((installment) => (
-                  <Card key={installment.id}>
+                  <Card key={installment.id} className="bg-blue-900/30 border-blue-800">
                     <CardContent className="py-4">
                       <div className="flex items-center justify-between">
                         <div className="space-y-1">
-                          <p className="font-medium">{installment.installmentNumber}ª Prestação</p>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="font-medium text-white">{installment.installmentNumber}ª Prestação</p>
+                          <p className="text-sm text-blue-300">
                             {installment.amount.toLocaleString("pt-AO")} Kz
                           </p>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-2 text-sm text-blue-300">
                             <Calendar className="h-3 w-3" />
                             Vence: {installment.dueDate.toLocaleDateString("pt-AO")}
                           </div>
                           {installment.paidAt && (
-                            <p className="text-sm text-green-600">
+                            <p className="text-sm text-green-400">
                               Pago em: {installment.paidAt.toLocaleDateString("pt-AO")}
                             </p>
                           )}
                         </div>
                         <div className="flex flex-col items-end gap-2">
-                          <Badge variant={installment.status === "paid" ? "default" : "outline"}>
+                          <Badge variant={installment.status === "paid" ? "default" : "outline"} className={installment.status === "paid" ? "bg-green-500 text-white border-green-600" : "border-orange-500 text-orange-400"}>
                             {installment.status === "paid" ? "Pago" : "Pendente"}
                           </Badge>
                           {installment.status === "pending" && (
-                            <Button size="sm" onClick={() => handlePayInstallment(installment.id)} disabled={loading}>
+                            <Button size="sm" onClick={() => handlePayInstallment(installment.id)} disabled={loading} className="bg-orange-500 hover:bg-orange-600 text-white">
                               {loading ? "Processando..." : "Marcar como Pago"}
                             </Button>
                           )}
@@ -506,7 +506,7 @@ export default function PagamentosPage() {
                   <Button
                     onClick={handleSignNextInstallment}
                     disabled={loading}
-                    className="w-full bg-green-600 hover:bg-green-700"
+                    className="w-full bg-green-600 hover:bg-green-700 text-white"
                   >
                     {loading ? "Processando..." : "✓ Assinar Próxima Prestação"}
                   </Button>

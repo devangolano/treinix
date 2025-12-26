@@ -68,8 +68,8 @@ function SidebarContent() {
   }
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex h-16 items-center gap-2 border-b border-border px-6">
+    <div className="flex h-full flex-col bg-blue-950">
+      <div className="flex h-16 items-center gap-2 border-b border-blue-800 px-6">
         <Image src="/logo.png" alt="Treinix Logo" width={120} height={30} className="h-6 w-auto" />
       </div>
 
@@ -85,8 +85,8 @@ function SidebarContent() {
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                 isActive
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  ? "bg-orange-500 text-white"
+                  : "text-blue-300 hover:bg-blue-900 hover:text-white",
               )}
             >
               <Icon className="h-4 w-4" />
@@ -96,8 +96,8 @@ function SidebarContent() {
         })}
       </nav>
 
-      <div className="border-t border-border p-4">
-        <Button variant="ghost" className="w-full justify-start gap-3" onClick={handleLogout}>
+      <div className="border-t border-blue-800 p-4">
+        <Button variant="ghost" className="w-full justify-start gap-3 text-blue-300 hover:bg-blue-900 hover:text-white" onClick={handleLogout}>
           <LogOut className="h-4 w-4" />
           Sair
         </Button>
@@ -110,24 +110,24 @@ export function CentroSidebar() {
   return (
     <>
       {/* Desktop Sidebar */}
-      <div className="hidden md:flex h-screen w-64 flex-col border-r border-border bg-card">
+      <div className="hidden md:flex h-screen w-64 flex-col border-r border-blue-800 bg-blue-950">
         <SidebarContent />
       </div>
 
       {/* Mobile Menu */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-50 flex h-16 items-center justify-between border-b border-border bg-card px-4">
+      <div className="md:hidden fixed top-0 left-0 right-0 z-50 flex h-16 items-center justify-between border-b border-blue-800 bg-blue-950 px-4">
         <div className="flex items-center gap-2">
-          <GraduationCap className="h-6 w-6 text-primary" />
-          <span className="text-lg font-bold">Formação-Ao</span>
+          <GraduationCap className="h-6 w-6 text-orange-400" />
+          <span className="text-lg font-bold text-white">Formação-Ao</span>
         </div>
 
         <Sheet>
           <SheetTrigger asChild>
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" className="text-blue-300 hover:text-white hover:bg-blue-900">
               <Menu className="h-5 w-5" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="w-64 p-0">
+          <SheetContent side="left" className="w-64 p-0 bg-blue-950 border-blue-800">
             <SidebarContent />
           </SheetContent>
         </Sheet>
