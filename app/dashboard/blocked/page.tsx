@@ -1,14 +1,74 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { AlertTriangle } from "lucide-react"
 import Link from "next/link"
 import { signIn, signOut, getCurrentUser, onAuthStateChange } from "@/lib/supabase-auth"
 import { useRouter } from "next/navigation"
+import { centroService, subscriptionService } from "@/lib/supabase-services"
+import { Spinner } from "@/components/ui/spinner"
+import { useAuth } from "@/hooks/use-auth"
 
 export default function BlockedPage() {
   const router = useRouter()
+  const { user: currentUser } = useAuth()
+  const [loading, setLoading] = useState(true)
+  const [hasAccess, setHasAccess] = useState(false)
+
+  useEffect(() => {
+    const verifyBlocked = async () => {
+      try {
+        if (!currentUser?.centroId) {
+          router.push("/login")
+          return
+        }
+
+        // Carregar dados do centro
+        const centroData = await centroService.getById(currentUser.centroId)
+        if (!centroData) {
+          router.push("/login")
+          return
+        }
+
+        // Verificar se há trial ativo
+        const hasActiveTrial = centroData.trialEndsAt && new Date(centroData.trialEndsAt) > new Date()
+
+        // Carregar subscrições ativas
+        const subscriptions = await subscriptionService.getByCentroId(currentUser.centroId)
+        const activeSubs = subscriptions.filter((s) => s.status === "active")
+
+        // Se tem trial OU subscrição, redirecionar para dashboard
+        if (hasActiveTrial || activeSubs.length > 0) {
+          setHasAccess(true)
+          router.push("/dashboard")
+          return
+        }
+
+        // Se chegou aqui, realmente não tem acesso (sem trial e sem subscrição)
+        setHasAccess(false)
+      } catch (error) {
+        console.error("Erro ao verificar bloqueio:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    verifyBlocked()
+  }, [currentUser, router])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-900">
+        <Spinner />
+      </div>
+    )
+  }
+
+  if (hasAccess || !currentUser) {
+    return null
+  }
 
   const handleLogout = async () => {
     await signOut()

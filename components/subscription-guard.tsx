@@ -94,8 +94,9 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
   } | null>(null)
   const [lastCheckTime, setLastCheckTime] = useState(Date.now())
 
-  const allowedWhenBlocked = ["/dashboard/subscription", "/dashboard/blocked"]
-  const isAllowedRoute = allowedWhenBlocked.some((route) => pathname.startsWith(route))
+  // Quando bloqueado, APENAS allow a página de bloqueio
+  const allowedWhenBlocked = ["/dashboard/blocked"]
+  const isBlockedRoute = allowedWhenBlocked.some((route) => pathname === route)
 
   // Refrescar verificação quando o usuário volta à aba/janela (visibilitychange)
   useEffect(() => {
@@ -190,7 +191,7 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
         return
       }
 
-      // Verificar se está em período de teste (seja status "trial" ou "active" com trialEndsAt)
+      // PRIMEIRO: Verificar se está em período de teste ANTES de checar subscrição
       if (centro.trialEndsAt) {
         const now = new Date()
         const daysRemaining = Math.ceil((centro.trialEndsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
@@ -206,19 +207,12 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
           setChecking(false)
           return
         } else {
-          // Teste expirado
+          // Teste expirado - agora verificar se há subscrição ativa
           console.log("[SubscriptionGuard] Período de teste expirado")
-          setSubscriptionStatus({
-            hasAccess: false,
-            status: "expired",
-            message: "Período de teste expirado. Contrate uma subscrição para continuar.",
-          })
-          setChecking(false)
-          return
         }
       }
 
-      // Verificar subscrição ativa (se status é "active" e não tem trial)
+      // SEGUNDO: Verificar subscrição ativa (se não há trial ativo)
       if (centro.subscriptionStatus === "active") {
         const subscriptions = await subscriptionService.getByCentroId(centroId)
         const activeSubscription = subscriptions.find((s) => s.status === "active")
@@ -242,11 +236,6 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
 
         // Status é "active" mas não tem subscrição ativa = precisa renovar
         console.log("[SubscriptionGuard] Status active mas sem subscrição ativa")
-        setSubscriptionStatus({
-          hasAccess: false,
-          status: "expired",
-          message: "Subscrição expirada. Renove para continuar usando a plataforma.",
-        })
         setChecking(false)
         return
       }
@@ -284,11 +273,11 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
       return
     }
 
-    // Se sem acesso e não está em rota permitida, redirecionar
-    if (!subscriptionStatus?.hasAccess && !isAllowedRoute && pathname !== "/dashboard/blocked") {
+    // Se sem acesso e não está em rota permitida, redirecionar para bloqueado
+    if (!subscriptionStatus?.hasAccess && !isBlockedRoute) {
       router.push("/dashboard/blocked")
     }
-  }, [checking, user, subscriptionStatus?.hasAccess, isAllowedRoute, pathname, router])
+  }, [checking, user, subscriptionStatus?.hasAccess, isBlockedRoute, pathname, router])
 
   if (checking) {
     return (
@@ -301,10 +290,10 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
     )
   }
 
-  if (subscriptionStatus?.hasAccess || isAllowedRoute) {
+  if (subscriptionStatus?.hasAccess || isBlockedRoute) {
     return (
       <>
-        {subscriptionStatus?.status === "trial" && !isAllowedRoute && (
+        {subscriptionStatus?.status === "trial" && !isBlockedRoute && (
           <TrialExpiringDialog
             daysRemaining={subscriptionStatus.daysRemaining || 0}
             onRenew={() => router.push("/dashboard/subscription")}

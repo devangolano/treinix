@@ -30,10 +30,20 @@ export default function SuperAdminDashboard() {
 
       const allSubscriptions = subscriptions.flat()
 
+      // Contar centros com trial ATIVO (trialEndsAt no futuro)
+      const trialCentros = centros.filter((c) => c.trialEndsAt && new Date(c.trialEndsAt) > new Date()).length
+      
+      // Contar centros com subscrição ATIVA (status="active")
+      const centrosComSubAtiva = centros.filter((c) => {
+        const subs = subscriptions.flat()
+        const activeSubs = subs.filter((s) => s.centroId === c.id && s.status === "active")
+        return activeSubs.length > 0
+      }).length
+
       setStats({
         totalCentros: centros.length,
-        activeCentros: centros.filter((c) => c.subscriptionStatus === "active").length,
-        trialCentros: centros.filter((c) => c.subscriptionStatus === "trial").length,
+        activeCentros: centrosComSubAtiva,
+        trialCentros: trialCentros,
         expiredCentros: centros.filter((c) => c.subscriptionStatus === "expired").length,
         pendingSubscriptions: allSubscriptions.filter((s) => s.paymentStatus === "pending").length,
       })
@@ -46,7 +56,7 @@ export default function SuperAdminDashboard() {
 
   if (loading) {
     return (
-      <div className="flex h-screen bg-slate-900">
+      <div className="flex flex-col md:flex-row min-h-screen bg-slate-900">
         <SuperAdminSidebar />
         <div className="flex-1 flex items-center justify-center bg-slate-900">
           <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
@@ -56,11 +66,11 @@ export default function SuperAdminDashboard() {
   }
 
   return (
-    <div className="flex h-screen bg-slate-900">
+    <div className="flex flex-col md:flex-row min-h-screen bg-slate-900">
       <SuperAdminSidebar />
 
-      <div className="flex-1 overflow-auto bg-slate-900">
-        <div className="container py-8">
+      <div className="flex-1 overflow-auto bg-slate-900 pt-16 md:pt-0">
+        <div className="w-full max-w-7xl mx-auto py-6 md:py-8 px-4 md:px-6">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-white">Dashboard Super Admin</h1>
             <p className="text-blue-300">Visão geral da plataforma</p>

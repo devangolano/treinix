@@ -56,13 +56,56 @@ export default function SubscriptionsPage() {
   const handleApprove = async (subscriptionId: string) => {
     setApprovingId(subscriptionId)
     try {
-      await subscriptionService.update(subscriptionId, { paymentStatus: "approved" })
+      // Encontrar a subscrição que está sendo aprovada
+      const subscriptionToApprove = subscriptions.find((s) => s.id === subscriptionId)
+      if (!subscriptionToApprove) {
+        throw new Error("Subscrição não encontrada")
+      }
+
+      // Encontrar a subscrição ativa/aprovada mais recente (aquela com a data de término mais distante)
+      const previousActiveSubscription = subscriptions.find(
+        (s) =>
+          s.centroId === subscriptionToApprove.centroId &&
+          s.id !== subscriptionId &&
+          (s.status === "active" || (s.paymentStatus === "approved"))
+      )
+
+      // Calcular a nova data de término
+      // Se houver subscrição anterior aprovada, somar meses a partir da data de término dela
+      // Se não, somar meses a partir de hoje
+      const baseDate = previousActiveSubscription ? new Date(previousActiveSubscription.endDate) : new Date()
+      const newEndDate = new Date(baseDate)
+      newEndDate.setMonth(newEndDate.getMonth() + subscriptionToApprove.months)
+
+      console.log("Subscrição anterior:", previousActiveSubscription)
+      console.log("Base date:", baseDate)
+      console.log("Nova end date:", newEndDate)
+
+      // Atualizar a subscrição com paymentStatus='approved', status='active' e nova end_date
+      await subscriptionService.update(subscriptionId, {
+        paymentStatus: "approved",
+        status: "active",
+        endDate: newEndDate,
+      })
+
+      // NÃO marcar como expirada - ambas permanecem como "active" enquanto forem válidas
+      // O status "expired" é calculado na data de expiração real
+
+      // Atualizar status do centro para "active"
+      const centro = centros[subscriptionToApprove.centroId]
+      if (centro) {
+        await centroService.update(subscriptionToApprove.centroId, {
+          subscriptionStatus: "active",
+        })
+      }
+
       await loadData()
       toast({
         title: "Subscrição aprovada",
-        description: "A subscrição foi aprovada com sucesso.",
+        description: `A subscrição foi aprovada com sucesso. Novo término: ${newEndDate.toLocaleDateString("pt-AO")}`,
       })
     } catch (error) {
+      console.error("Erro ao aprovar subscrição:", error)
       toast({
         title: "Erro",
         description: "Não foi possível aprovar a subscrição.",
@@ -127,7 +170,7 @@ export default function SubscriptionsPage() {
 
   if (loading) {
     return (
-      <div className="flex h-screen bg-slate-900">
+      <div className="flex flex-col md:flex-row min-h-screen bg-slate-900">
         <SuperAdminSidebar />
         <div className="flex-1 flex items-center justify-center bg-slate-900">
           <Spinner />
@@ -141,14 +184,14 @@ export default function SubscriptionsPage() {
   const rejectedSubscriptions = subscriptions.filter((s) => s.paymentStatus === "rejected")
 
   return (
-    <div className="flex h-screen">
+    <div className="flex flex-col md:flex-row min-h-screen bg-slate-900">
       <SuperAdminSidebar />
 
-      <div className="flex-1 overflow-auto">
-        <div className="container py-8">
+      <div className="flex-1 overflow-auto bg-slate-900 pt-16 md:pt-0">
+        <div className="w-full max-w-7xl mx-auto py-6 md:py-8 px-4 md:px-6">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold">Gestão de Subscrições</h1>
-            <p className="text-muted-foreground">Aprovação e gestão de planos de subscrição</p>
+            <h1 className="text-3xl font-bold text-white">Gestão de Subscrições</h1>
+            <p className="text-blue-300">Aprovação e gestão de planos de subscrição</p>
           </div>
 
           <Tabs defaultValue="pending" className="w-full">

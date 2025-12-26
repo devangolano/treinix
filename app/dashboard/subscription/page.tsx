@@ -59,35 +59,69 @@ export default function SubscriptionPage() {
     }
   }
 
-  const activeSubscription = subscriptions.find((s) => 
-    s.status === "active" || s.plan?.toLowerCase() === "trial" || (s.status === "pending" && s.paymentStatus === "approved")
-  )
+  // Verificar se há trial ativo (verifica se trialEndsAt existe E está no futuro)
+  const hasActiveTrial = centroData?.trialEndsAt && new Date(centroData.trialEndsAt) > new Date()
+
+  // Encontrar APENAS subscrições ATIVAS (status="active")
+  const activeSubs = subscriptions.filter((s) => s.status === "active")
   
-  // Se não houver subscrição ativa, verificar se há Trial no centro
-  const trialSubscription = !activeSubscription && centroData?.subscriptionStatus === "trial" 
-    ? {
-        plan: "trial",
-        status: "active",
-        startDate: centroData?.createdAt,
-        endDate: centroData?.trialEndsAt,
-        paymentStatus: "approved",
-      }
-    : null
-
-  const currentActiveSubscription = activeSubscription || trialSubscription
-
-  const isExpiringSoon = currentActiveSubscription && new Date(currentActiveSubscription.endDate) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+  let finalEndDate = null
+  let totalMonths = 0
+  let currentActiveSubscription = null
   
   // Calcular dias restantes
   const calculateDaysRemaining = (endDate: Date | string) => {
     const end = new Date(endDate)
     const now = new Date()
+    
+    // Zerar horas/minutos/segundos para calcular apenas os dias
+    end.setHours(0, 0, 0, 0)
+    now.setHours(0, 0, 0, 0)
+    
     const diffTime = end.getTime() - now.getTime()
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    return diffDays
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+    
+    return Math.max(0, diffDays) // Retorna no mínimo 0
   }
   
-  const daysRemaining = currentActiveSubscription ? calculateDaysRemaining(currentActiveSubscription.endDate) : 0
+  // Lógica: Se tem TRIAL OU SUBSCRIÇÃO, mostra dados (somando ambos se existirem)
+  if (hasActiveTrial || activeSubs.length > 0) {
+    // Somar meses apenas das subscrições pagas
+    totalMonths = activeSubs.reduce((sum, sub) => sum + sub.months, 0)
+    
+    // Encontrar data final APENAS das subscrições pagas (sem trial)
+    if (activeSubs.length > 0) {
+      const subDates = activeSubs.map(s => s.endDate)
+      finalEndDate = subDates.reduce((latest, current) => {
+        const latestDate = new Date(latest)
+        const currentDate = new Date(current)
+        return currentDate > latestDate ? current : latest
+      })
+    }
+    
+    // Se tem subscrição, usa dados dela; senão usa trial
+    currentActiveSubscription = {
+      ...(activeSubs.length > 0 ? activeSubs[0] : { plan: "trial", status: "active", paymentStatus: "approved" }),
+      endDate: finalEndDate || centroData?.trialEndsAt,
+      months: totalMonths,
+    }
+  }
+
+  const isExpiringSoon = currentActiveSubscription && new Date(currentActiveSubscription.endDate) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+  
+  // Calcular dias restantes: considerar trial + subscrição
+  let daysRemaining = 0
+  if (currentActiveSubscription) {
+    // Dias restantes da subscrição
+    const subDays = finalEndDate ? calculateDaysRemaining(finalEndDate) : 0
+    
+    // Dias restantes do trial
+    const trialDays = hasActiveTrial && centroData?.trialEndsAt ? calculateDaysRemaining(centroData.trialEndsAt) : 0
+    
+    // Total: soma dos dias
+    daysRemaining = subDays + trialDays
+  }
+  
   const isTrialPlan = currentActiveSubscription?.plan?.toLowerCase() === "trial"
   const pendingSubscriptions = subscriptions.filter((s) => s.paymentStatus === "pending")
   const hasPendingSubscription = pendingSubscriptions.length > 0
@@ -153,6 +187,15 @@ export default function SubscriptionPage() {
             </Alert>
           )}
 
+          {/* Alerta de Conta Bloqueada (Sem subscrição ativa e sem trial) */}
+          {!currentActiveSubscription && (
+            <Alert className="mb-6 bg-red-900/30 border-red-800">
+              <AlertDescription className="text-red-300">
+                🔒 Sua conta está sem acesso. Você não possui uma subscrição ativa nem um período de teste ativo. Solicite uma subscrição abaixo para reativar o acesso.
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Status Atual */}
           <Card className="mb-8 bg-blue-900/30 border-blue-800">
             <CardHeader>
@@ -181,6 +224,13 @@ export default function SubscriptionPage() {
                         )}
                       </div>
                     </div>
+
+                    {totalMonths > 0 && !isTrialPlan && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-blue-200">Duração Total:</span>
+                        <span className="text-sm text-white font-semibold">{totalMonths} mês{totalMonths > 1 ? "es" : ""}</span>
+                      </div>
+                    )}
 
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium text-blue-200">Válido até:</span>

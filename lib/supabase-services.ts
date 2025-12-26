@@ -221,6 +221,7 @@ export const subscriptionService = {
       const updateData: any = {}
       if (data.status) updateData.status = data.status
       if (data.paymentStatus) updateData.payment_status = data.paymentStatus
+      if (data.endDate) updateData.end_date = data.endDate.toISOString()
 
       const { data: updatedSub, error } = await supabase
         .from("subscriptions")
@@ -230,13 +231,6 @@ export const subscriptionService = {
         .single()
 
       if (error) throw error
-
-      // Se a subscrição foi aprovada, atualizar o status do centro para "active"
-      if (data.paymentStatus === "approved" && updatedSub) {
-        await centroService.update(updatedSub.centro_id, {
-          subscriptionStatus: "active",
-        })
-      }
 
       return {
         ...updatedSub,
