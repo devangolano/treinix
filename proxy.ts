@@ -1,6 +1,36 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
+/**
+ * Define headers de cache control baseado na rota
+ */
+function setCacheHeaders(request: NextRequest) {
+  const { pathname } = request.nextUrl
+
+  // Rotas que NÃO devem ser cacheadas
+  const noCacheRoutes = [
+    "/login",
+    "/register",
+    "/dashboard",
+    "/super-admin",
+    "/api/auth",
+  ]
+
+  const shouldNotCache = noCacheRoutes.some(
+    (route) => pathname === route || pathname.startsWith(route)
+  )
+
+  if (shouldNotCache) {
+    const response = NextResponse.next()
+    response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0")
+    response.headers.set("Pragma", "no-cache")
+    response.headers.set("Expires", "0")
+    return response
+  }
+
+  return NextResponse.next()
+}
+
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
@@ -9,7 +39,7 @@ export function proxy(request: NextRequest) {
   const isPublicRoute = publicRoutes.some((route) => pathname === route || pathname.startsWith("/api/public"))
 
   if (isPublicRoute) {
-    return NextResponse.next()
+    return setCacheHeaders(request)
   }
 
   // Verificar autenticação (simulado via headers para o mock)
@@ -26,15 +56,15 @@ export function proxy(request: NextRequest) {
 
   // Rotas do super admin - apenas verificar autenticação aqui
   if (pathname.startsWith("/super-admin")) {
-    return NextResponse.next()
+    return setCacheHeaders(request)
   }
 
   // Rotas dos centros - apenas verificar autenticação aqui
   if (pathname.startsWith("/dashboard")) {
-    return NextResponse.next()
+    return setCacheHeaders(request)
   }
 
-  return NextResponse.next()
+  return setCacheHeaders(request)
 }
 
 export const config = {
