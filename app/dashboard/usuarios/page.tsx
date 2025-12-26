@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, UserCog, Mail, Search, Filter } from "lucide-react"
+import { Plus, UserCog, Mail, Search, Filter, Trash2, Edit2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import type { User } from "@/lib/types"
 import Link from "next/link"
@@ -82,6 +82,39 @@ export default function UsuariosPage() {
     return matchesSearch && matchesRole
   })
 
+  const handleDeleteUsuario = async (usuarioId: string) => {
+    if (!confirm("Tem certeza que deseja deletar este usuário?")) {
+      return
+    }
+
+    try {
+      const success = await userService.delete(usuarioId)
+      if (success) {
+        toast({
+          title: "Usuário deletado com sucesso!",
+          description: "O usuário foi removido do sistema.",
+        })
+        // Recarregar a lista de usuários
+        if (currentUser?.centroId) {
+          await loadUsuarios(currentUser.centroId)
+        }
+      } else {
+        toast({
+          title: "Erro ao deletar usuário",
+          description: "Não foi possível deletar o usuário.",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Erro ao deletar usuário:", error)
+      toast({
+        title: "Erro ao deletar usuário",
+        description: "Ocorreu um erro ao tentar deletar o usuário.",
+        variant: "destructive",
+      })
+    }
+  }
+
   if (!currentUser || loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-900">
@@ -148,7 +181,7 @@ export default function UsuariosPage() {
             </CardContent>
           </Card>
 
-          <div className="space-y-4">
+          <div className="space-y-2">
             {filteredUsuarios.length === 0 ? (
               <Card className="bg-blue-900/30 border-blue-800">
                 <CardContent className="py-12 text-center">
@@ -162,29 +195,41 @@ export default function UsuariosPage() {
             ) : (
               filteredUsuarios.map((usuario) => (
                 <Card key={usuario.id} className="hover:shadow-md transition-shadow bg-blue-900/30 border-blue-800 hover:border-orange-500">
-                  <CardContent className="py-5">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                      <div className="flex items-start gap-4">
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-orange-500/20">
-                          <UserCog className="h-6 w-6 text-orange-400" />
+                  <CardContent className="py-3 px-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-500/20">
+                          <UserCog className="h-5 w-5 text-orange-400" />
                         </div>
-                        <div className="space-y-2">
-                          <h3 className="font-semibold text-lg text-white">{usuario.name}</h3>
-                          <div className="flex items-center gap-2 text-sm text-blue-300">
-                            <Mail className="h-4 w-4" />
-                            <span>{usuario.email}</span>
-                          </div>
-                          <p className="text-sm text-blue-300">
-                            Criado em: {usuario.createdAt.toLocaleDateString("pt-AO")}
-                          </p>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-sm text-white truncate">{usuario.name}</h3>
+                          <p className="text-xs text-blue-300 truncate">{usuario.email}</p>
                         </div>
+                        <Badge
+                          variant={usuario.role === "centro_admin" ? "default" : "secondary"}
+                          className="shrink-0 bg-orange-500 text-white border-orange-600 text-xs"
+                        >
+                          {usuario.role === "centro_admin" ? "Admin" : "Sec"}
+                        </Badge>
                       </div>
-                      <Badge
-                        variant={usuario.role === "centro_admin" ? "default" : "secondary"}
-                        className="h-fit shrink-0 bg-orange-500 text-white border-orange-600"
-                      >
-                        {usuario.role === "centro_admin" ? "Administrador" : "Secretário/a"}
-                      </Badge>
+                      <div className="flex gap-2 items-center">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-blue-700 text-blue-300 hover:bg-blue-900 hover:text-white"
+                          onClick={() => router.push(`/dashboard/usuarios/editar?id=${usuario.id}`)}
+                        >
+                          <Edit2 className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-red-700/50 text-red-300 hover:bg-red-900/20 hover:text-red-200 hover:border-red-600"
+                          onClick={() => handleDeleteUsuario(usuario.id)}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
