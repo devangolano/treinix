@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation"
 interface AuthContextType {
   user: User | null
   isLoading: boolean
-  login: (email: string, password: string) => Promise<boolean>
+  login: (email: string, password: string) => Promise<{ success: boolean; user?: User }>
   logout: () => void
 }
 
@@ -51,17 +51,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     const result = await signIn(email, password)
     if (result.success && result.data) {
-      // Aguardar o onAuthStateChange ser disparado para garantir que o usuário está carregado
-      // Usar um pequeno delay e verificar se o usuário foi setado
-      let attempts = 0
-      while (!user && attempts < 10) {
-        await new Promise(resolve => setTimeout(resolve, 100))
-        attempts++
+      // Buscar o perfil do usuário imediatamente após o login bem-sucedido
+      const profile = await getUserProfile(result.data.id)
+      if (profile) {
+        setUser(profile)
+        return { success: true, user: profile }
       }
-      return true
+      return { success: false }
     } else {
       console.error(result.error)
-      return false
+      return { success: false }
     }
   }
 

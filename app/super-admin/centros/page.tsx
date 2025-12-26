@@ -1,20 +1,21 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { SuperAdminSidebar } from "@/components/super-admin-sidebar"
 import { Spinner } from "@/components/ui/spinner"
-import { centroService } from "@/lib/supabase-services"
+import { centroService, subscriptionService } from "@/lib/supabase-services"
 import type { Centro } from "@/lib/types"
-import { Lock, Unlock, Phone, Mail, MapPin } from "lucide-react"
+import { Phone, ChevronRight } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 export default function CentrosPage() {
   const [centros, setCentros] = useState<Centro[]>([])
+  const [subscriptions, setSubscriptions] = useState<Record<string, any>>({})
   const [loading, setLoading] = useState(true)
-  const [blockingId, setBlockingId] = useState<string | null>(null)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -26,6 +27,25 @@ export default function CentrosPage() {
       setLoading(true)
       const data = await centroService.getAll()
       setCentros(data)
+
+      // Buscar subscrições ativas para cada centro
+      const subsMap: Record<string, any> = {}
+      for (const centro of data) {
+        try {
+          const subs = await subscriptionService.getByCentroId(centro.id)
+          // Procurar subscrição que seja "active" OU "pending" com payment_status "approved"
+          const activeSub = subs.find(
+            (s) => s.status === "active" || (s.status === "pending" && s.paymentStatus === "approved")
+          )
+          if (activeSub) {
+            subsMap[centro.id] = activeSub
+            console.log(`[CentrosPage] Subscrição encontrada para ${centro.name}:`, activeSub)
+          }
+        } catch (error) {
+          console.error(`Erro ao buscar subscrição do centro ${centro.id}:`, error)
+        }
+      }
+      setSubscriptions(subsMap)
     } catch (error) {
       console.error("Erro ao carregar centros:", error)
       toast({
@@ -35,46 +55,6 @@ export default function CentrosPage() {
       })
     } finally {
       setLoading(false)
-    }
-  }
-
-  const handleBlock = async (centroId: string) => {
-    setBlockingId(centroId)
-    try {
-      await centroService.update(centroId, { subscriptionStatus: "blocked" })
-      await loadCentros()
-      toast({
-        title: "Centro bloqueado",
-        description: "O centro foi bloqueado com sucesso.",
-      })
-    } catch (error) {
-      toast({
-        title: "Erro",
-        description: "Não foi possível bloquear o centro.",
-        variant: "destructive",
-      })
-    } finally {
-      setBlockingId(null)
-    }
-  }
-
-  const handleUnblock = async (centroId: string) => {
-    setBlockingId(centroId)
-    try {
-      await centroService.update(centroId, { subscriptionStatus: "active" })
-      await loadCentros()
-      toast({
-        title: "Centro desbloqueado",
-        description: "O centro foi desbloqueado com sucesso.",
-      })
-    } catch (error) {
-      toast({
-        title: "Erro",
-        description: "Não foi possível desbloquear o centro.",
-        variant: "destructive",
-      })
-    } finally {
-      setBlockingId(null)
     }
   }
 
@@ -119,82 +99,48 @@ export default function CentrosPage() {
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-4">
-              {centros.map((centro) => (
-                <Card key={centro.id} className="bg-blue-900/30 border-blue-800">
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-1">
-                        <CardTitle className="text-xl text-white">{centro.name}</CardTitle>
-                        <div className="flex items-center gap-4 text-sm text-blue-300">
-                          <div className="flex items-center gap-1">
-                            <Mail className="h-3 w-3" />
-                            {centro.email}
+            <div className="space-y-3">
+              {centros.map((centro) => {
+                const planEndDate = subscriptions[centro.id]?.endDate || centro.trialEndsAt
+                const planEndDateStr = planEndDate
+                  ? new Date(planEndDate).toLocaleDateString("pt-AO")
+                  : "-"
+
+                return (
+                  <Link key={centro.id} href={`/super-admin/centros/${centro.id}`}>
+                    <Card className="bg-blue-900/30 border-blue-800 hover:bg-blue-900/50 hover:border-orange-500 transition-all cursor-pointer">
+                      <CardContent className="py-4">
+                        <div className="flex items-center justify-between">
+                          {/* Informação Principal: Nome */}
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-lg font-semibold text-white truncate">{centro.name}</h3>
                           </div>
-                          <div className="flex items-center gap-1">
-                            <Phone className="h-3 w-3" />
-                            {centro.phone}
+
+                          {/* Telefone */}
+                          <div className="flex items-center gap-2 text-blue-300 mx-4 whitespace-nowrap">
+                            <Phone className="h-4 w-4" />
+                            <span className="text-sm">{centro.phone}</span>
                           </div>
+
+                          {/* Status */}
+                          <div className="mx-4">
+                            {getStatusBadge(centro.subscriptionStatus)}
+                          </div>
+
+                          {/* Término do Plano */}
+                          <div className="text-right mx-4">
+                            <p className="text-xs text-blue-300">Término do plano</p>
+                            <p className="text-sm font-semibold text-white">{planEndDateStr}</p>
+                          </div>
+
+                          {/* Seta */}
+                          <ChevronRight className="h-5 w-5 text-blue-400" />
                         </div>
-                      </div>
-                      {getStatusBadge(centro.subscriptionStatus)}
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex items-start gap-2">
-                        <MapPin className="h-4 w-4 text-blue-400 mt-0.5" />
-                        <p className="text-sm text-blue-200">{centro.address}</p>
-                      </div>
-
-                      {centro.nif && (
-                        <div className="text-sm">
-                          <p className="text-blue-300">NIF</p>
-                          <p className="font-mono text-white">{centro.nif}</p>
-                        </div>
-                      )}
-
-                      <div className="text-sm">
-                        <p className="text-blue-300">Data de Criação</p>
-                        <p className="text-white">{new Date(centro.createdAt).toLocaleDateString("pt-AO")}</p>
-                      </div>
-
-                      {centro.trialEndsAt && (
-                        <div className="text-sm">
-                          <p className="text-muted-foreground">Teste termina em</p>
-                          <p>{new Date(centro.trialEndsAt).toLocaleDateString("pt-AO")}</p>
-                        </div>
-                      )}
-
-                      <div className="flex gap-2 pt-4">
-                        {centro.subscriptionStatus === "blocked" ? (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleUnblock(centro.id)}
-                            disabled={blockingId === centro.id}
-                            className="gap-2"
-                          >
-                            <Unlock className="h-4 w-4" />
-                            Desbloquear
-                          </Button>
-                        ) : (
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => handleBlock(centro.id)}
-                            disabled={blockingId === centro.id}
-                            className="gap-2"
-                          >
-                            <Lock className="h-4 w-4" />
-                            Bloquear
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                      </CardContent>
+                    </Card>
+                  </Link>
+                )
+              })}
             </div>
           )}
         </div>

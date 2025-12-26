@@ -32,7 +32,7 @@ export default function BlockedPage() {
             <h3 className="font-semibold text-sm text-blue-200">Como renovar:</h3>
             <ul className="text-sm text-blue-300 space-y-1 list-disc list-inside">
               <li>Escolha seu plano de subscrição</li>
-              <li>Aguarde aprovação do Super Admin</li>
+              <li>Aguarde aprovação do Suporte</li>
               <li>Volte a ter acesso completo</li>
             </ul>
           </div>
@@ -41,8 +41,17 @@ export default function BlockedPage() {
             <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold" asChild>
               <Link href="/dashboard/subscription">Renovar Agora</Link>
             </Button>
-            <Button variant="outline" className="w-full border-blue-700 text-blue-200 hover:bg-orange-500/20 hover:text-orange-400 hover:border-orange-500" asChild>
-              <Link href="mailto:suporte@formacao-ao.com">Contactar Suporte</Link>
+            <Button 
+              variant="outline" 
+              className="w-full border-blue-700 text-blue-200 hover:bg-orange-500/20 hover:text-orange-400 hover:border-orange-500"
+              onClick={() => {
+                const whatsappNumber = "244948324028" // Angola +244
+                const message = "Olá, pretendo renovar a minha subscrição na plataforma Formação-AO"
+                const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`
+                window.open(whatsappUrl, "_blank")
+              }}
+            >
+              Contactar via WhatsApp
             </Button>
             <Button variant="ghost" className="w-full text-blue-300 hover:text-orange-400 hover:bg-blue-900/30" onClick={handleLogout}>
               Sair

@@ -93,7 +93,7 @@ export default function FormacoesPage() {
             ) : (
               formacoes.map((formacao) => (
                 <Card key={formacao.id} className="hover:shadow-lg transition-shadow border-blue-800 bg-blue-900/30 hover:border-orange-500">
-                  <CardHeader className="pb-3">
+                  <CardHeader className="pb-1">
                     <div className="flex items-start justify-between gap-2">
                       <CardTitle className="text-lg font-semibold leading-tight text-white">{formacao.name}</CardTitle>
                       <Badge variant={formacao.status === "active" ? "default" : "secondary"} className="shrink-0 bg-orange-500 text-white border-orange-600">

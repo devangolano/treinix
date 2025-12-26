@@ -1,5 +1,5 @@
 import { supabase } from "./supabase"
-import type { User } from "./types"
+import type { User, UserRole } from "./types"
 
 /**
  * Realiza login do usuário
@@ -177,7 +177,7 @@ export async function getUserProfile(userId: string): Promise<User | null> {
     }
 
     // Tentar buscar os dados do usuário na tabela users
-    let userRole = "centro_admin"
+    let userRole = data.user.user_metadata?.role || "centro_admin"
     let centroId: string | undefined
     let userName = data.user.user_metadata?.name || data.user.email || "Usuário"
 
@@ -190,12 +190,12 @@ export async function getUserProfile(userId: string): Promise<User | null> {
         .single()
 
       if (userData) {
-        userRole = userData.role || "centro_admin"
+        userRole = userData.role || userRole
         centroId = userData.centro_id
         userName = userData.name || userName
       }
     } catch (error: any) {
-      // PGRST116 = Nenhuma linha encontrada (usuário não está na tabela users, pode ser admin que se registrou)
+      // PGRST116 = Nenhuma linha encontrada (usuário não está na tabela users, pode ser super_admin ou admin que se registrou)
       if (error?.code !== "PGRST116") {
         console.error("Erro ao buscar dados do usuário na tabela users:", error)
       }
@@ -231,7 +231,7 @@ export async function getUserProfile(userId: string): Promise<User | null> {
       id: data.user.id,
       name: userName,
       email: data.user.email || "",
-      role: userRole as any,
+      role: userRole as UserRole,
       centroId: centroId,
       createdAt: new Date(data.user.created_at),
       updatedAt: new Date(data.user.updated_at || data.user.created_at),

@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { AuthProvider } from "@/hooks/use-auth"
+import { SubscriptionRefreshProvider } from "@/hooks/use-subscription-refresh"
 import "./globals.css"
 import "@/styles/treinix-theme.css"
 
@@ -42,7 +43,9 @@ export default function RootLayout({
     <html lang="pt" suppressHydrationWarning>
       <body className={`font-sans antialiased`} suppressHydrationWarning>
         <AuthProvider>
-          {children}
+          <SubscriptionRefreshProvider>
+            {children}
+          </SubscriptionRefreshProvider>
         </AuthProvider>
         <Analytics />
       </body>

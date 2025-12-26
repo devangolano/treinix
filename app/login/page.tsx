@@ -28,12 +28,16 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      const success = await login(email, password)
+      const result = await login(email, password)
 
-      if (success) {
-        // Aguardar um pouco para o AuthProvider atualizar
-        await new Promise(resolve => setTimeout(resolve, 500))
-        router.push("/dashboard")
+      if (result.success && result.user) {
+        // Redirecionar baseado na role - sem delay, redirect é imediato
+        if (result.user.role === "super_admin") {
+          router.push("/super-admin")
+        } else {
+          // Para secretario e centro_admin
+          router.push("/dashboard")
+        }
       } else {
         setError("Email ou senha incorretos.")
       }

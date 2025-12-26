@@ -160,8 +160,11 @@ export const subscriptionService = {
       if (error) throw error
 
       return (data || []).map((sub) => ({
-        ...sub,
+        id: sub.id,
         centroId: sub.centro_id,
+        plan: sub.plan,
+        months: sub.months,
+        status: sub.status,
         startDate: new Date(sub.start_date),
         endDate: new Date(sub.end_date),
         paymentStatus: sub.payment_status,

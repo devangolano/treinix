@@ -20,16 +20,17 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url))
   }
 
-  // Rotas do super admin
+  // Nota: A lógica de verificação de role (super_admin vs centro_admin) 
+  // é feita no lado do cliente nos layouts e guards
+  // Isso permite transições suaves e melhor UX
+
+  // Rotas do super admin - apenas verificar autenticação aqui
   if (pathname.startsWith("/super-admin")) {
-    // Verificar se é super admin (em produção, verificar o token)
     return NextResponse.next()
   }
 
-  // Rotas dos centros - verificar subscrição
+  // Rotas dos centros - apenas verificar autenticação aqui
   if (pathname.startsWith("/dashboard")) {
-    // Em produção, extrair centroId do token
-    // Para o mock, permitir acesso (a verificação será feita no lado do cliente)
     return NextResponse.next()
   }
 

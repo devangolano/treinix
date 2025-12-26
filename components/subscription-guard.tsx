@@ -6,6 +6,7 @@ import type { ReactNode } from "react"
 import { centroService, subscriptionService } from "@/lib/supabase-services"
 import { signOut } from "@/lib/supabase-auth"
 import { useAuth } from "@/hooks/use-auth"
+import { useSubscriptionRefresh } from "@/hooks/use-subscription-refresh"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
@@ -83,6 +84,7 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
   const router = useRouter()
   const pathname = usePathname()
   const { user, isLoading: authLoading } = useAuth()
+  const { onRefreshTriggered } = useSubscriptionRefresh()
   const [checking, setChecking] = useState(true)
   const [subscriptionStatus, setSubscriptionStatus] = useState<{
     hasAccess: boolean
@@ -90,33 +92,79 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
     daysRemaining?: number
     message?: string
   } | null>(null)
+  const [lastCheckTime, setLastCheckTime] = useState(Date.now())
 
   const allowedWhenBlocked = ["/dashboard/subscription", "/dashboard/blocked"]
   const isAllowedRoute = allowedWhenBlocked.some((route) => pathname.startsWith(route))
+
+  // Refrescar verificação quando o usuário volta à aba/janela (visibilitychange)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        // Refrescar verificação quando aba volta a ser visível
+        setLastCheckTime(Date.now())
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
+    }
+  }, [])
+
+  // Registrar listener para refresh disparado externamente
+  useEffect(() => {
+    const unsubscribe = onRefreshTriggered(() => {
+      console.log("[SubscriptionGuard] Refresh disparado externamente")
+      setLastCheckTime(Date.now())
+    })
+
+    return unsubscribe
+  }, [onRefreshTriggered])
 
   useEffect(() => {
     if (authLoading) return
 
     console.log("[SubscriptionGuard] Verificando acesso para rota:", pathname)
 
-    if (!user || !user.centroId) {
-      console.log("[SubscriptionGuard] Usuário não autenticado ou sem centroId")
-      router.push("/login")
+    if (!user) {
+      console.log("[SubscriptionGuard] Usuário não autenticado")
+      setChecking(false)
       return
     }
 
     console.log("[SubscriptionGuard] Usuário:", user)
 
-    // Super admin sempre tem acesso
+    // Super admin sempre tem acesso a qualquer rota
     if (user.role === "super_admin") {
       console.log("[SubscriptionGuard] Super admin detectado, acesso liberado")
       setChecking(false)
       return
     }
 
+    // Para outros usuários, verificar centroId
+    if (!user.centroId) {
+      console.log("[SubscriptionGuard] Usuário sem centroId")
+      setChecking(false)
+      return
+    }
+
     // Verificar subscrição do centro
     checkSubscription(user.centroId)
-  }, [user, authLoading, router, pathname])
+  }, [user, authLoading, router, pathname, lastCheckTime])
+
+  // Polling automático a cada 30 segundos para refrescar status
+  useEffect(() => {
+    if (authLoading || !user || !user.centroId || user.role === "super_admin") {
+      return
+    }
+
+    const interval = setInterval(() => {
+      setLastCheckTime(Date.now())
+    }, 30000) // 30 segundos
+
+    return () => clearInterval(interval)
+  }, [authLoading, user, user?.centroId, user?.role])
 
   const checkSubscription = async (centroId: string) => {
     try {
@@ -128,10 +176,22 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
         return
       }
 
-      console.log("[SubscriptionGuard] Centro:", centro)
+      console.log("[SubscriptionGuard] Centro:", centro, "Status:", centro.subscriptionStatus)
 
-      // Verificar se está em período de teste
-      if (centro.subscriptionStatus === "trial" && centro.trialEndsAt) {
+      // Se o centro foi explicitamente bloqueado, bloquear
+      if (centro.subscriptionStatus === "blocked") {
+        console.log("[SubscriptionGuard] Centro bloqueado")
+        setSubscriptionStatus({
+          hasAccess: false,
+          status: "blocked",
+          message: "Conta bloqueada. Entre em contacto com o suporte.",
+        })
+        setChecking(false)
+        return
+      }
+
+      // Verificar se está em período de teste (seja status "trial" ou "active" com trialEndsAt)
+      if (centro.trialEndsAt) {
         const now = new Date()
         const daysRemaining = Math.ceil((centro.trialEndsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
 
@@ -145,10 +205,20 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
           })
           setChecking(false)
           return
+        } else {
+          // Teste expirado
+          console.log("[SubscriptionGuard] Período de teste expirado")
+          setSubscriptionStatus({
+            hasAccess: false,
+            status: "expired",
+            message: "Período de teste expirado. Contrate uma subscrição para continuar.",
+          })
+          setChecking(false)
+          return
         }
       }
 
-      // Verificar subscrição ativa
+      // Verificar subscrição ativa (se status é "active" e não tem trial)
       if (centro.subscriptionStatus === "active") {
         const subscriptions = await subscriptionService.getByCentroId(centroId)
         const activeSubscription = subscriptions.find((s) => s.status === "active")
@@ -169,17 +239,24 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
             return
           }
         }
+
+        // Status é "active" mas não tem subscrição ativa = precisa renovar
+        console.log("[SubscriptionGuard] Status active mas sem subscrição ativa")
+        setSubscriptionStatus({
+          hasAccess: false,
+          status: "expired",
+          message: "Subscrição expirada. Renove para continuar usando a plataforma.",
+        })
+        setChecking(false)
+        return
       }
 
-      // Subscrição expirada ou bloqueada
-      console.log("[SubscriptionGuard] Acesso bloqueado")
+      // Qualquer outro status = bloqueado
+      console.log("[SubscriptionGuard] Status desconhecido ou pendente:", centro.subscriptionStatus)
       setSubscriptionStatus({
         hasAccess: false,
-        status: centro.subscriptionStatus === "blocked" ? "blocked" : "expired",
-        message:
-          centro.subscriptionStatus === "blocked"
-            ? "Conta bloqueada. Entre em contacto com o suporte."
-            : "Subscrição expirada. Renove para continuar usando a plataforma.",
+        status: "expired",
+        message: "Status de subscrição inválido. Entre em contacto com o suporte.",
       })
       setChecking(false)
     } catch (error) {
@@ -188,6 +265,30 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
       setChecking(false)
     }
   }
+
+  // Efeito para redirecionamento quando status muda
+  useEffect(() => {
+    if (checking) return
+
+    if (!user) {
+      router.push("/login")
+      return
+    }
+
+    if (user.role === "super_admin") {
+      return
+    }
+
+    if (!user.centroId) {
+      router.push("/login")
+      return
+    }
+
+    // Se sem acesso e não está em rota permitida, redirecionar
+    if (!subscriptionStatus?.hasAccess && !isAllowedRoute && pathname !== "/dashboard/blocked") {
+      router.push("/dashboard/blocked")
+    }
+  }, [checking, user, subscriptionStatus?.hasAccess, isAllowedRoute, pathname, router])
 
   if (checking) {
     return (
@@ -212,11 +313,6 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
         {children}
       </>
     )
-  }
-
-  if (!isAllowedRoute && pathname !== "/dashboard/blocked") {
-    router.push("/dashboard/blocked")
-    return null
   }
 
   // Página de bloqueio
@@ -261,9 +357,14 @@ function SubscriptionBlockedPage({ status, message }: { status: string; message?
             <Button
               variant="outline"
               className="w-full bg-transparent"
-              onClick={() => (window.location.href = "mailto:suporte@formacao-ao.com")}
+              onClick={() => {
+                const whatsappNumber = "244948324028" // Angola +244
+                const message = "Olá, pretendo renovar a minha subscrição na plataforma Formação-AO"
+                const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`
+                window.open(whatsappUrl, "_blank")
+              }}
             >
-              Contactar Suporte
+              Contactar via WhatsApp
             </Button>
             <Button
               variant="ghost"

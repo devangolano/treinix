@@ -60,7 +60,7 @@ export default function SubscriptionPage() {
   }
 
   const activeSubscription = subscriptions.find((s) => 
-    s.status === "active" || s.plan?.toLowerCase() === "trial"
+    s.status === "active" || s.plan?.toLowerCase() === "trial" || (s.status === "pending" && s.paymentStatus === "approved")
   )
   
   // Se não houver subscrição ativa, verificar se há Trial no centro
@@ -165,14 +165,13 @@ export default function SubscriptionPage() {
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium text-blue-200">Status:</span>
                       <Badge
-                        variant={currentActiveSubscription.status === "active" ? "default" : "secondary"}
-                        className="bg-orange-500 text-white border-orange-600"
+                        variant={currentActiveSubscription.paymentStatus === "approved" ? "default" : "secondary"}
+                        className="bg-green-600 text-white border-green-700"
                       >
-                        {currentActiveSubscription.status === "active" ? "Ativa" : "Inativa"}
+                        {currentActiveSubscription.paymentStatus === "approved" ? "Aprovada" : "Pendente"}
                       </Badge>
                     </div>
-,
-,
+
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium text-blue-200">Plano:</span>
                       <div className="flex items-center gap-2">
@@ -194,7 +193,7 @@ export default function SubscriptionPage() {
                         {daysRemaining > 0 ? `${daysRemaining} dia${daysRemaining > 1 ? "s" : ""}` : "Vencida"}
                       </span>
                     </div>
-          </>
+                  </>
                 ) : (
                   <div className="text-center py-4">
                     <p className="text-blue-300 mb-4">Você não possui uma subscrição ativa</p>
