@@ -15,6 +15,15 @@ import Link from "next/link"
 import { useAuth } from "@/hooks/use-auth"
 import { userService } from "@/lib/supabase-services"
 import { Spinner } from "@/components/ui/spinner"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 interface CentroUser {
   id: string
@@ -37,6 +46,9 @@ export default function UsuariosPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [roleFilter, setRoleFilter] = useState<string>("all")
   const [loading, setLoading] = useState(true)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [usuarioADeletar, setUsuarioADeletar] = useState<CentroUser | null>(null)
+  const [deletando, setDeletando] = useState(false)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -83,17 +95,25 @@ export default function UsuariosPage() {
   })
 
   const handleDeleteUsuario = async (usuarioId: string) => {
-    if (!confirm("Tem certeza que deseja deletar este usuário?")) {
-      return
+    const usuario = usuarios.find(u => u.id === usuarioId)
+    if (usuario) {
+      abrirDialogoDelete(usuario)
     }
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!usuarioADeletar) return
 
     try {
-      const success = await userService.delete(usuarioId)
+      setDeletando(true)
+      const success = await userService.delete(usuarioADeletar.id)
       if (success) {
         toast({
           title: "Usuário deletado com sucesso!",
           description: "O usuário foi removido do sistema.",
         })
+        setDeleteDialogOpen(false)
+        setUsuarioADeletar(null)
         // Recarregar a lista de usuários
         if (currentUser?.centroId) {
           await loadUsuarios(currentUser.centroId)
@@ -112,7 +132,14 @@ export default function UsuariosPage() {
         description: "Ocorreu um erro ao tentar deletar o usuário.",
         variant: "destructive",
       })
+    } finally {
+      setDeletando(false)
     }
+  }
+
+  const abrirDialogoDelete = (usuario: CentroUser) => {
+    setUsuarioADeletar(usuario)
+    setDeleteDialogOpen(true)
   }
 
   if (!currentUser || loading) {
@@ -238,6 +265,34 @@ export default function UsuariosPage() {
           </div>
         </div>
       </div>
+
+      {/* Dialog de Confirmação para Deletar */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent className="bg-blue-950 border-blue-800">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">Deletar Usuário</AlertDialogTitle>
+            <AlertDialogDescription className="text-blue-200">
+              Tem certeza que deseja deletar o usuário <span className="font-semibold text-white">"{usuarioADeletar?.name}"</span>? 
+              <br />
+              <span className="text-xs text-red-400 mt-2 inline-block">
+                Esta ação não pode ser desfeita.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex gap-3 justify-end">
+            <AlertDialogCancel className="border-blue-700 text-blue-200 hover:bg-blue-900 hover:text-white">
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              disabled={deletando}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {deletando ? "Deletando..." : "Deletar"}
+            </AlertDialogAction>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
