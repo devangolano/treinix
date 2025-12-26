@@ -1,0 +1,16 @@
+# Formação-Ao Robots Configuration
+User-agent: *
+Allow: /
+Allow: /dashboard
+Allow: /register
+Allow: /login
+
+# Block admin paths if any
+Disallow: /api/admin
+Disallow: /_next
+
+# Sitemap location
+Sitemap: https://formacao-ao.com/sitemap.xml
+
+# Crawl delay for polite crawling
+Crawl-delay: 1

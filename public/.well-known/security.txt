@@ -1,0 +1,5 @@
+Contact: suporte@formacao-ao.com
+Expires: 2026-12-31T00:00:00Z
+Preferred-Languages: pt, pt-AO, en
+Canonical: https://formacao-ao.com/.well-known/security.txt
+Policy: https://formacao-ao.com/privacy-policy
