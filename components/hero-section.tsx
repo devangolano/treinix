@@ -11,7 +11,7 @@ export function HeroSection() {
             <div className="inline-block rounded-lg bg-blue-900/10 px-3 py-1 text-sm text-blue-900">
               3 Dias de Teste Grátis
             </div>
-            <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl text-balance text-slate-900">
+            <h1 className="text-2xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl text-balance text-slate-900">
               Sistema Completo de Gestão para Centros de Formação
             </h1>
             <p className="mx-auto max-w-175 text-slate-600 text-lg md:text-xl leading-relaxed">

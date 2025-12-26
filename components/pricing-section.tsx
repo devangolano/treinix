@@ -10,11 +10,12 @@ const plans = [
     period: "mês",
     description: "Ideal para começar",
     features: [
-      "Até 100 alunos",
+      "Alunos ilimitados",
       "Formações ilimitadas",
       "Gestão de turmas",
       "Sistema de pagamentos",
       "Suporte por email",
+      "Relatórios avançados",
     ],
   },
   {
@@ -24,7 +25,7 @@ const plans = [
     description: "Mais popular",
     popular: true,
     features: [
-      "Até 300 alunos",
+      "Alunos ilimitados",
       "Formações ilimitadas",
       "Gestão de turmas",
       "Sistema de pagamentos",
@@ -42,9 +43,8 @@ const plans = [
       "Formações ilimitadas",
       "Gestão de turmas",
       "Sistema de pagamentos",
-      "Suporte 24/7",
+      "Suporte 24/7 ilimitado",
       "Relatórios avançados",
-      "Treinamento gratuito",
     ],
   },
 ]

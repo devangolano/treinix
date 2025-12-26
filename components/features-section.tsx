@@ -61,10 +61,12 @@ export function FeaturesSection() {
             return (
               <Card key={index} className="card-treinix bg-white border-slate-200">
                 <CardHeader>
-                  <div className={`h-12 w-12 rounded-lg bg-linear-to-br ${bgColor} flex items-center justify-center mb-4`}>
-                    <feature.icon className="h-6 w-6 text-white" />
+                  <div className="flex items-start gap-4">
+                    <div className={`h-12 w-12 rounded-lg bg-linear-to-br ${bgColor} flex items-center justify-center shrink-0`}>
+                      <feature.icon className="h-6 w-6 text-white" />
+                    </div>
+                    <CardTitle className="text-xl text-slate-900">{feature.title}</CardTitle>
                   </div>
-                  <CardTitle className="text-xl text-slate-900">{feature.title}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <CardDescription className="text-base leading-relaxed text-slate-600">{feature.description}</CardDescription>
