@@ -19,53 +19,68 @@ import { Button } from "@/components/ui/button"
 import { signOut } from "@/lib/supabase-auth"
 import { useRouter } from "next/navigation"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { useAuth } from "@/hooks/use-auth"
 
 const menuItems = [
   {
     title: "Dashboard",
     icon: LayoutDashboard,
     href: "/dashboard",
+    requiredRole: null, // Todos podem ver
   },
   {
     title: "Formações",
     icon: GraduationCap,
     href: "/dashboard/formacoes",
+    requiredRole: null, // Todos podem ver
   },
   {
     title: "Alunos",
     icon: Users,
     href: "/dashboard/alunos",
+    requiredRole: null, // Todos podem ver
   },
   {
     title: "Turmas",
     icon: Calendar,
     href: "/dashboard/turmas",
+    requiredRole: null, // Todos podem ver
   },
   {
     title: "Pagamentos",
     icon: CreditCard,
     href: "/dashboard/pagamentos",
+    requiredRole: null, // Todos podem ver
   },
   {
     title: "Usuários",
     icon: UserCog,
     href: "/dashboard/usuarios",
+    requiredRole: "centro_admin", // Apenas admin pode ver
   },
   {
     title: "Subscrição",
     icon: FileText,
     href: "/dashboard/subscription",
+    requiredRole: null, // Todos podem ver
   },
 ]
 
 function SidebarContent() {
   const pathname = usePathname()
   const router = useRouter()
+  const { user } = useAuth()
 
   const handleLogout = async () => {
     await signOut()
     router.push("/login")
   }
+
+  // Filtrar itens do menu baseado na role do usuário
+  const visibleMenuItems = menuItems.filter(item => {
+    if (item.requiredRole === null) return true
+    return user?.role === item.requiredRole
+  })
 
   return (
     <div className="flex h-full flex-col bg-blue-950">
@@ -74,7 +89,7 @@ function SidebarContent() {
       </div>
 
       <nav className="flex-1 space-y-1 p-4">
-        {menuItems.map((item) => {
+        {visibleMenuItems.map((item) => {
           const Icon = item.icon
           const isActive = pathname === item.href
 

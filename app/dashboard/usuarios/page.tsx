@@ -44,6 +44,13 @@ export default function UsuariosPage() {
       router.push("/login")
       return
     }
+    
+    // Verificar se o usuário é admin, caso contrário redirecionar
+    if (currentUser.role !== "centro_admin") {
+      router.push("/dashboard")
+      return
+    }
+    
     loadUsuarios(currentUser.centroId)
   }, [currentUser, router])
 

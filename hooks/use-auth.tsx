@@ -51,8 +51,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     const result = await signIn(email, password)
     if (result.success && result.data) {
-      // Recarregar sessão para garantir que o usuário está autenticado
-      // O onAuthStateChange vai ser disparado automaticamente
+      // Aguardar o onAuthStateChange ser disparado para garantir que o usuário está carregado
+      // Usar um pequeno delay e verificar se o usuário foi setado
+      let attempts = 0
+      while (!user && attempts < 10) {
+        await new Promise(resolve => setTimeout(resolve, 100))
+        attempts++
+      }
       return true
     } else {
       console.error(result.error)

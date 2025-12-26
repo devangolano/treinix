@@ -104,16 +104,26 @@ export async function signUp(email: string, password: string, name: string) {
       },
     })
 
-    if (error) throw error
+    if (error) {
+      // Melhorar mensagens de erro
+      if (error.message?.includes("already registered")) {
+        throw new Error("Este email já foi registrado. Por favor, faça login com sua conta.")
+      }
+      if (error.message?.includes("User already exists")) {
+        throw new Error("Este email já foi registrado. Por favor, faça login com sua conta.")
+      }
+      throw error
+    }
 
     return {
       success: true,
       data: data.user,
     }
   } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : "Erro ao registrar"
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Erro ao registrar",
+      error: errorMsg,
     }
   }
 }
@@ -166,40 +176,62 @@ export async function getUserProfile(userId: string): Promise<User | null> {
       return null
     }
 
-    // Tentar buscar o centroId associado a este email
+    // Tentar buscar os dados do usuário na tabela users
+    let userRole = "centro_admin"
     let centroId: string | undefined
+    let userName = data.user.user_metadata?.name || data.user.email || "Usuário"
 
-    // Primeiro, tentar buscar no localStorage
-    centroId = localStorage.getItem(`centro_${data.user.id}`) || undefined
+    try {
+      // Buscar na tabela users pelo auth_user_id
+      const { data: userData, error: userError } = await supabase
+        .from("users")
+        .select("*")
+        .eq("auth_user_id", data.user.id)
+        .single()
 
-    // Se não encontrar no localStorage, buscar na tabela centros
-    if (!centroId && data.user.email) {
-      try {
-        const { data: centroData } = await supabase
-          .from("centros")
-          .select("id")
-          .eq("email", data.user.email)
-          .single()
+      if (userData) {
+        userRole = userData.role || "centro_admin"
+        centroId = userData.centro_id
+        userName = userData.name || userName
+      }
+    } catch (error: any) {
+      // PGRST116 = Nenhuma linha encontrada (usuário não está na tabela users, pode ser admin que se registrou)
+      if (error?.code !== "PGRST116") {
+        console.error("Erro ao buscar dados do usuário na tabela users:", error)
+      }
+      
+      // Se não encontrar na tabela users, tentar buscar centroId por email
+      if (!centroId && data.user.email) {
+        try {
+          const { data: centroData, error: centroError } = await supabase
+            .from("centros")
+            .select("id")
+            .eq("email", data.user.email)
+            .single()
 
-        if (centroData?.id) {
-          centroId = centroData.id
-          // Guardar no localStorage para próximas vezes
-          if (centroId) {
-            localStorage.setItem(`centro_${data.user.id}`, centroId)
+          if (centroData?.id) {
+            centroId = centroData.id
+          }
+        } catch (centroErrorInner: any) {
+          // Se não encontrar centro também, log apenas se não for erro de "not found"
+          if (centroErrorInner?.code !== "PGRST116") {
+            console.error("Erro ao buscar centroId:", centroErrorInner)
           }
         }
-      } catch (error) {
-        console.error("Erro ao buscar centroId:", error)
-        // Continuar sem centroId
       }
     }
 
-    // Retornar dados do auth com centroId
+    // Guardar centroId no localStorage para próximas vezes
+    if (centroId) {
+      localStorage.setItem(`centro_${data.user.id}`, centroId)
+    }
+
+    // Retornar dados do auth com dados da tabela users
     return {
       id: data.user.id,
-      name: data.user.user_metadata?.name || data.user.email || "Usuário",
+      name: userName,
       email: data.user.email || "",
-      role: "centro_admin",
+      role: userRole as any,
       centroId: centroId,
       createdAt: new Date(data.user.created_at),
       updatedAt: new Date(data.user.updated_at || data.user.created_at),

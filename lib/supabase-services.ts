@@ -73,7 +73,7 @@ export const centroService = {
           address: data.address,
           nif: data.nif,
           subscription_status: "trial",
-          trial_ends_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          trial_ends_at: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
         },
       ]).select().single()
 
@@ -1061,8 +1061,50 @@ export const userService = {
     phone?: string
     role: string
     authUserId?: string
+    password?: string
   }): Promise<any | null> {
     try {
+      let authUserId = data.authUserId
+      let generatedPassword = ""
+
+      // Se não foi fornecido um authUserId, criar uma conta de autenticação no Supabase Auth
+      if (!authUserId) {
+        // Se não há senha, gerar uma temporária
+        if (!data.password) {
+          // Gerar senha aleatória de 12 caracteres
+          const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%"
+          generatedPassword = Array.from({ length: 12 }, () =>
+            chars.charAt(Math.floor(Math.random() * chars.length))
+          ).join("")
+        }
+
+        const password = data.password || generatedPassword
+
+        // Criar usuário no Supabase Auth usando signUp
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: data.email,
+          password,
+          options: {
+            data: {
+              name: data.name,
+              role: data.role,
+            },
+          },
+        })
+
+        if (authError) {
+          console.error("Erro ao criar conta de autenticação:", authError)
+          throw authError
+        }
+
+        if (authData.user) {
+          authUserId = authData.user.id
+        } else {
+          throw new Error("Falha ao criar usuário de autenticação")
+        }
+      }
+
+      // Criar registro na tabela users com o authUserId
       const { data: newUser, error } = await supabase
         .from("users")
         .insert([
@@ -1072,7 +1114,7 @@ export const userService = {
             email: data.email,
             phone: data.phone || null,
             role: data.role,
-            auth_user_id: data.authUserId || null,
+            auth_user_id: authUserId,
             status: "active",
           },
         ])
@@ -1093,6 +1135,7 @@ export const userService = {
         lastLogin: newUser.last_login ? new Date(newUser.last_login) : undefined,
         createdAt: new Date(newUser.created_at),
         updatedAt: new Date(newUser.updated_at),
+        generatedPassword: generatedPassword || undefined, // Retornar senha gerada se foi criada
       }
     } catch (error) {
       console.error("Erro ao criar usuário:", error)

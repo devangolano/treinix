@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { AlertCircle, CheckCircle2 } from "lucide-react"
 import { signUp } from "@/lib/supabase-auth"
-import { centroService } from "@/lib/supabase-services"
+import { centroService, userService } from "@/lib/supabase-services"
 import { useAuth } from "@/hooks/use-auth"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
@@ -58,10 +58,17 @@ export default function RegisterPage() {
       const authResult = await signUp(formData.email, formData.password, formData.centroName)
 
       if (!authResult.success) {
-        setError(authResult.error || "Erro ao criar conta")
+        // Se o erro for "user_already_exists", mostrar mensagem mais clara
+        if (authResult.error?.includes("already registered") || authResult.error?.includes("already exists")) {
+          setError("Este email já foi registrado. Por favor, faça login ou use outro email.")
+        } else {
+          setError(authResult.error || "Erro ao criar conta")
+        }
         setLoading(false)
         return
       }
+
+      const authUserId = authResult.data?.id
 
       // Pequeno delay para garantir que o usuário foi criado
       await new Promise(resolve => setTimeout(resolve, 500))
@@ -81,12 +88,26 @@ export default function RegisterPage() {
         return
       }
 
-      // Armazenar centroId nos metadados do usuário (for future use)
-      // Vamos armazena também na sessão local
-      const { data: authData } = await signUp(formData.email, formData.password, formData.centroName)
-      if (authData) {
-        // Guardar centroId no localStorage para depois usar
-        localStorage.setItem(`centro_${authData.id}`, centroResult.id)
+      // Criar registro na tabela users para o admin do centro
+      if (authUserId && centroResult.id) {
+        try {
+          await userService.create({
+            centroId: centroResult.id,
+            name: formData.centroName,
+            email: formData.email,
+            phone: formData.phone,
+            role: "centro_admin",
+            authUserId: authUserId,
+          })
+        } catch (userError) {
+          console.error("Erro ao criar registro do usuário na tabela users:", userError)
+          // Continuar mesmo se falhar, pois o getUserProfile consegue buscar pelo email
+        }
+      }
+
+      // Guardar centroId no localStorage
+      if (authUserId) {
+        localStorage.setItem(`centro_${authUserId}`, centroResult.id)
       }
 
       // Fazer login automaticamente após registro bem-sucedido
