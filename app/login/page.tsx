@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
@@ -16,11 +16,22 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 
 export default function LoginPage() {
   const router = useRouter()
-  const { login } = useAuth()
+  const { login, user, isLoading } = useAuth()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+
+  // Redirecionar se já estiver logado
+  useEffect(() => {
+    if (!isLoading && user) {
+      if (user.role === "super_admin") {
+        router.push("/super-admin")
+      } else {
+        router.push("/dashboard")
+      }
+    }
+  }, [user, isLoading, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -47,6 +58,20 @@ export default function LoginPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  // Mostrar loading enquanto verifica autenticação
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-blue-950">
+        <div className="text-center">
+          <div className="inline-block">
+            <div className="h-12 w-12 animate-spin rounded-full border-4 border-slate-700 border-t-orange-500"></div>
+          </div>
+          <p className="mt-4 text-white">Carregando...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
