@@ -228,6 +228,13 @@ export const subscriptionService = {
 
       if (error) throw error
 
+      // Se a subscrição foi aprovada, atualizar o status do centro para "active"
+      if (data.paymentStatus === "approved" && updatedSub) {
+        await centroService.update(updatedSub.centro_id, {
+          subscriptionStatus: "active",
+        })
+      }
+
       return {
         ...updatedSub,
         centroId: updatedSub.centro_id,

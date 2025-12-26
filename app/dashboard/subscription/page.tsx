@@ -13,6 +13,7 @@ import type { Subscription } from "@/lib/types"
 import { useAuth } from "@/hooks/use-auth"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 const MONTHLY_PRICE = 5000 // 5.000 Kz por mês
 
@@ -88,6 +89,47 @@ export default function SubscriptionPage() {
   
   const daysRemaining = currentActiveSubscription ? calculateDaysRemaining(currentActiveSubscription.endDate) : 0
   const isTrialPlan = currentActiveSubscription?.plan?.toLowerCase() === "trial"
+  const pendingSubscriptions = subscriptions.filter((s) => s.paymentStatus === "pending")
+  const hasPendingSubscription = pendingSubscriptions.length > 0
+
+  const handleContractSubscription = async () => {
+    if (!currentUser?.centroId || selectedMonths < 1) return
+
+    try {
+      setLoading(true)
+      const startDate = new Date()
+      const endDate = new Date()
+      endDate.setMonth(endDate.getMonth() + selectedMonths)
+
+      const newSubscription = await subscriptionService.create({
+        centroId: currentUser.centroId,
+        plan: "mensal",
+        months: selectedMonths,
+        status: "pending",
+        startDate,
+        endDate,
+        paymentStatus: "pending",
+      })
+
+      if (newSubscription) {
+        await loadSubscriptions(currentUser.centroId)
+        toast({
+          title: "Subscrição solicitada com sucesso!",
+          description: "Sua solicitação de subscrição está pendente de aprovação pelo super admin.",
+        })
+        setSelectedMonths(1)
+      }
+    } catch (error) {
+      console.error("Erro ao contratar subscrição:", error)
+      toast({
+        title: "Erro ao contratar subscrição",
+        description: "Não foi possível processar sua solicitação.",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
 
   if (!currentUser) return null
 
@@ -101,6 +143,15 @@ export default function SubscriptionPage() {
             <h1 className="text-2xl md:text-3xl font-bold text-white">Subscrição</h1>
             <p className="text-blue-200">Gerencie sua subscrição e histórico de pagamentos</p>
           </div>
+
+          {/* Alerta de Subscrição Pendente */}
+          {hasPendingSubscription && (
+            <Alert className="mb-6 bg-amber-900/30 border-amber-800">
+              <AlertDescription className="text-amber-300">
+                ⏳ Você tem {pendingSubscriptions.length} subscrição{pendingSubscriptions.length > 1 ? "ões" : ""} pendente{pendingSubscriptions.length > 1 ? "s" : ""} de aprovação. A equipa do suporte analisará sua solicitação em breve.
+              </AlertDescription>
+            </Alert>
+          )}
 
           {/* Status Atual */}
           <Card className="mb-8 bg-blue-900/30 border-blue-800">
@@ -120,7 +171,8 @@ export default function SubscriptionPage() {
                         {currentActiveSubscription.status === "active" ? "Ativa" : "Inativa"}
                       </Badge>
                     </div>
-
+,
+,
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium text-blue-200">Plano:</span>
                       <div className="flex items-center gap-2">
@@ -204,6 +256,7 @@ export default function SubscriptionPage() {
                 </div>
 
                 <Button
+                  onClick={handleContractSubscription}
                   className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 text-base"
                   disabled={loading || selectedMonths < 1}
                 >
@@ -227,7 +280,7 @@ export default function SubscriptionPage() {
               ) : (
                 subscriptions.map((sub: Subscription) => (
                   <Card key={sub.id} className="bg-blue-900/30 border-blue-800 hover:border-orange-500 transition-colors">
-                    <CardContent className="py-2">
+                    <CardContent className="">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div className="space-y-1">
                           <p className="font-medium capitalize text-white">Plano {sub.plan}</p>
