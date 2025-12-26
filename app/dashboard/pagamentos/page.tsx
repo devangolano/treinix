@@ -235,6 +235,12 @@ export default function PagamentosPage() {
   const pendingPagamentos = filterPagamentos(
     pagamentos.filter((p) => p.status !== "completed" && p.status !== "cancelled"),
   )
+  const vistaCompletedPagamentos = filterPagamentos(
+    pagamentos.filter((p) => p.status === "completed" && p.paymentMethod === "cash"),
+  )
+  const otherCompletedPagamentos = filterPagamentos(
+    pagamentos.filter((p) => p.status === "completed" && p.paymentMethod !== "cash"),
+  )
   const completedPagamentos = filterPagamentos(pagamentos.filter((p) => p.status === "completed"))
   const allFilteredPagamentos = filterPagamentos(pagamentos)
 
@@ -283,7 +289,8 @@ export default function PagamentosPage() {
             <TabsList>
               <TabsTrigger value="all">Todos ({allFilteredPagamentos.length})</TabsTrigger>
               <TabsTrigger value="pending">Pendentes ({pendingPagamentos.length})</TabsTrigger>
-              <TabsTrigger value="completed">Completos ({completedPagamentos.length})</TabsTrigger>
+              <TabsTrigger value="vista">À Vista ({vistaCompletedPagamentos.length})</TabsTrigger>
+              <TabsTrigger value="completed">Completos ({otherCompletedPagamentos.length})</TabsTrigger>
             </TabsList>
 
             <TabsContent value="pending" className="space-y-4">
@@ -357,19 +364,19 @@ export default function PagamentosPage() {
               )}
             </TabsContent>
 
-            <TabsContent value="completed" className="space-y-4">
-              {completedPagamentos.length === 0 ? (
+            <TabsContent value="vista" className="space-y-4">
+              {vistaCompletedPagamentos.length === 0 ? (
                 <Card className="bg-blue-900/30 border-blue-800">
                   <CardContent className="py-12 text-center">
                     <p className="text-blue-300">
-                      {pagamentos.filter((p) => p.status === "completed").length === 0
-                        ? "Nenhum pagamento completo"
+                      {pagamentos.filter((p) => p.status === "completed" && p.paymentMethod === "cash").length === 0
+                        ? "Nenhum pagamento à vista"
                         : "Nenhum pagamento encontrado com os filtros aplicados"}
                     </p>
                   </CardContent>
                 </Card>
               ) : (
-                completedPagamentos.map((pagamento) => {
+                vistaCompletedPagamentos.map((pagamento) => {
                   const statusConfig = getStatusBadge(pagamento.status)
                   const StatusIcon = statusConfig.icon
                   return (
@@ -380,6 +387,48 @@ export default function PagamentosPage() {
                             <p className="font-semibold text-white">{getAlunoName(pagamento.alunoId)}</p>
                             <p className="text-sm text-blue-300">{getTurmaName(pagamento.turmaId)}</p>
                             <p className="text-sm font-semibold text-white">{pagamento.amount.toLocaleString("pt-AO")} Kz</p>
+                            <p className="text-sm text-blue-300">
+                              {getStats(pagamento.id).paidCount}/{pagamento.installments} prestações
+                            </p>
+                          </div>
+                          <Badge variant={statusConfig.variant} className="bg-green-500 text-white border-green-600">
+                            <StatusIcon className="h-3 w-3 mr-1" />
+                            {statusConfig.label}
+                          </Badge>
+                        </div>
+                        <Progress value={100} className="h-2 bg-blue-800" />
+                      </CardContent>
+                    </Card>
+                  )
+                })
+              )}
+            </TabsContent>
+
+            <TabsContent value="completed" className="space-y-4">
+              {otherCompletedPagamentos.length === 0 ? (
+                <Card className="bg-blue-900/30 border-blue-800">
+                  <CardContent className="py-12 text-center">
+                    <p className="text-blue-300">
+                      {pagamentos.filter((p) => p.status === "completed" && p.paymentMethod !== "cash").length === 0
+                        ? "Nenhum pagamento completo"
+                        : "Nenhum pagamento encontrado com os filtros aplicados"}
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                otherCompletedPagamentos.map((pagamento) => {
+                  const statusConfig = getStatusBadge(pagamento.status)
+                  const StatusIcon = statusConfig.icon
+                  return (
+                    <Card key={pagamento.id} className="bg-blue-900/30 border-blue-800 hover:border-orange-500 transition-colors">
+                      <CardContent className="py-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="space-y-1">
+                            <p className="font-semibold text-white">{getAlunoName(pagamento.alunoId)}</p>
+                            <p className="text-sm text-blue-300">{getTurmaName(pagamento.turmaId)}</p>
+                            <p className="text-sm font-semibold text-white">
+                              {pagamento.amount.toLocaleString("pt-AO")} Kz
+                            </p>
                             <p className="text-sm text-blue-300">
                               {getStats(pagamento.id).paidCount}/{pagamento.installments} prestações
                             </p>
