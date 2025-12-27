@@ -68,12 +68,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("Iniciando login para:", email)
       setIsLoading(true)
       
-      const result = await signIn(email, password)
+      // Fazer login com timeout de 30 segundos
+      const signInPromise = signIn(email, password)
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Login timeout após 30 segundos")), 30000)
+      )
+      
+      const result = await Promise.race([signInPromise, timeoutPromise]) as any
+      
       if (result.success && result.data) {
         console.log("signIn retornou sucesso para:", email)
         
-        // Buscar o perfil do usuário imediatamente após o login bem-sucedido
-        const profile = await getUserProfile(result.data.id)
+        // Buscar o perfil do usuário com timeout de 15 segundos
+        const profilePromise = getUserProfile(result.data.id)
+        const profileTimeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("getUserProfile timeout após 15 segundos")), 15000)
+        )
+        
+        const profile = await Promise.race([profilePromise, profileTimeoutPromise]) as User | null
+        
         if (profile) {
           console.log("Perfil do usuário carregado:", profile.id, profile.role)
           // Atualizar o estado do usuário e parar de carregar
@@ -82,11 +95,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setIsLoading(false)
           return { success: true, user: profile }
         }
-        console.error("Falha ao carregar perfil do usuário")
+        console.error("Falha ao carregar perfil do usuário - profile é null")
         setIsLoading(false)
         return { success: false }
       } else {
-        console.error("Erro no login:", result.error)
+        console.error("Erro no login:", result?.error)
         setIsLoading(false)
         return { success: false }
       }

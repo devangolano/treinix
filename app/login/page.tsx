@@ -46,6 +46,8 @@ export default function LoginPage() {
     try {
       console.log("LoginPage: Tentando fazer login com", email)
       const result = await login(email, password)
+      
+      console.log("LoginPage: Login retornou resultado:", result.success, result.user?.role)
 
       if (result.success && result.user) {
         console.log("LoginPage: Login bem-sucedido, redirecionando para", result.user.role === "super_admin" ? "/super-admin" : "/dashboard")
@@ -56,10 +58,12 @@ export default function LoginPage() {
         
         // Usar replace em vez de push para evitar voltar para login
         // Pequeno delay para garantir que o estado foi atualizado antes de redirecionar
+        console.log("LoginPage: Aguardando 100ms antes de redirecionar para", redirectUrl)
         await new Promise(resolve => setTimeout(resolve, 100))
+        console.log("LoginPage: Fazendo router.replace para", redirectUrl)
         router.replace(redirectUrl)
       } else {
-        console.log("LoginPage: Falha no login")
+        console.log("LoginPage: Falha no login", result)
         setError("Email ou senha incorretos.")
         setLoading(false)
         setIsRedirecting(false)

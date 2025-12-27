@@ -169,75 +169,89 @@ export function onAuthStateChange(callback: (user: any | null) => void) {
  */
 export async function getUserProfile(userId: string): Promise<User | null> {
   try {
-    // Buscar o usuário autenticado atual do Supabase
-    const { data } = await supabase.auth.getUser()
+    console.log("getUserProfile: Iniciando para userId:", userId)
     
-    if (!data?.user) {
+    // Buscar o usuário autenticado atual do Supabase
+    const { data, error: authError } = await supabase.auth.getUser()
+    
+    if (authError || !data?.user) {
+      console.error("getUserProfile: Erro ao buscar usuário do Auth:", authError)
       return null
     }
 
-    // Tentar buscar os dados do usuário na tabela users
-    let userRole = data.user.user_metadata?.role || "centro_admin"
-    let centroId: string | undefined
-    let userName = data.user.user_metadata?.name || data.user.email || "Usuário"
+    const authUser = data.user
 
+    // Valores padrão
+    let userRole = authUser.user_metadata?.role || "centro_admin"
+    let centroId: string | undefined
+    let userName = authUser.user_metadata?.name || authUser.email || "Usuário"
+
+    console.log("getUserProfile: User metadata role:", authUser.user_metadata?.role)
+
+    // Buscar na tabela users pelo auth_user_id
     try {
-      // Buscar na tabela users pelo auth_user_id
       const { data: userData, error: userError } = await supabase
         .from("users")
-        .select("*")
-        .eq("auth_user_id", data.user.id)
+        .select("role, centro_id, name")
+        .eq("auth_user_id", authUser.id)
         .single()
 
       if (userData) {
+        console.log("getUserProfile: Dados encontrados na tabela users:", userData)
         userRole = userData.role || userRole
         centroId = userData.centro_id
         userName = userData.name || userName
+      } else if (userError && userError.code === "PGRST116") {
+        console.log("getUserProfile: Usuário não encontrado na tabela users (normal para novo user)")
+      } else if (userError) {
+        console.error("getUserProfile: Erro ao buscar na tabela users:", userError)
       }
     } catch (error: any) {
-      // PGRST116 = Nenhuma linha encontrada (usuário não está na tabela users, pode ser super_admin ou admin que se registrou)
-      if (error?.code !== "PGRST116") {
-        console.error("Erro ao buscar dados do usuário na tabela users:", error)
-      }
-      
-      // Se não encontrar na tabela users, tentar buscar centroId por email
-      if (!centroId && data.user.email) {
-        try {
-          const { data: centroData, error: centroError } = await supabase
-            .from("centros")
-            .select("id")
-            .eq("email", data.user.email)
-            .single()
+      console.error("getUserProfile: Exceção ao buscar na tabela users:", error)
+    }
 
-          if (centroData?.id) {
-            centroId = centroData.id
-          }
-        } catch (centroErrorInner: any) {
-          // Se não encontrar centro também, log apenas se não for erro de "not found"
-          if (centroErrorInner?.code !== "PGRST116") {
-            console.error("Erro ao buscar centroId:", centroErrorInner)
-          }
+    // Se não tem centroId, tentar buscar pela email do centro
+    if (!centroId && authUser.email) {
+      try {
+        console.log("getUserProfile: Tentando buscar centro por email:", authUser.email)
+        const { data: centroData, error: centroError } = await supabase
+          .from("centros")
+          .select("id")
+          .eq("email", authUser.email)
+          .single()
+
+        if (centroData?.id) {
+          console.log("getUserProfile: Centro encontrado:", centroData.id)
+          centroId = centroData.id
+        } else if (centroError && centroError.code === "PGRST116") {
+          console.log("getUserProfile: Nenhum centro encontrado com este email")
+        } else if (centroError) {
+          console.error("getUserProfile: Erro ao buscar centro:", centroError)
         }
+      } catch (error: any) {
+        console.error("getUserProfile: Exceção ao buscar centro:", error)
       }
     }
 
     // Guardar centroId no localStorage para próximas vezes
     if (centroId) {
-      localStorage.setItem(`centro_${data.user.id}`, centroId)
+      localStorage.setItem(`centro_${authUser.id}`, centroId)
     }
 
-    // Retornar dados do auth com dados da tabela users
-    return {
-      id: data.user.id,
+    const profile: User = {
+      id: authUser.id,
       name: userName,
-      email: data.user.email || "",
+      email: authUser.email || "",
       role: userRole as UserRole,
       centroId: centroId,
-      createdAt: new Date(data.user.created_at),
-      updatedAt: new Date(data.user.updated_at || data.user.created_at),
+      createdAt: new Date(authUser.created_at),
+      updatedAt: new Date(authUser.updated_at || authUser.created_at),
     }
+
+    console.log("getUserProfile: Perfil completo:", profile)
+    return profile
   } catch (error) {
-    console.error("Erro ao obter perfil do usuário:", error)
+    console.error("getUserProfile: Erro geral ao obter perfil do usuário:", error)
     return null
   }
 }
