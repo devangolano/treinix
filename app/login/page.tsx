@@ -55,10 +55,9 @@ export default function LoginPage() {
         const redirectUrl = result.user.role === "super_admin" ? "/super-admin" : "/dashboard"
         
         // Usar replace em vez de push para evitar voltar para login
-        // Adicionar pequeno delay para garantir que o estado foi atualizado
-        setTimeout(() => {
-          router.replace(redirectUrl)
-        }, 100)
+        // Pequeno delay para garantir que o estado foi atualizado antes de redirecionar
+        await new Promise(resolve => setTimeout(resolve, 100))
+        router.replace(redirectUrl)
       } else {
         console.log("LoginPage: Falha no login")
         setError("Email ou senha incorretos.")

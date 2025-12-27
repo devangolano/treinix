@@ -140,6 +140,7 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
     if (user.role === "super_admin") {
       console.log("[SubscriptionGuard] Super admin detectado, acesso liberado")
       setChecking(false)
+      setSubscriptionStatus({ hasAccess: true, status: "active" })
       return
     }
 
@@ -147,6 +148,7 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
     if (!user.centroId) {
       console.log("[SubscriptionGuard] Usuário sem centroId")
       setChecking(false)
+      setSubscriptionStatus({ hasAccess: false, status: "expired", message: "Centro não encontrado" })
       return
     }
 
@@ -306,6 +308,17 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
         )}
         {children}
       </>
+    )
+  }
+
+  // Se subscriptionStatus é null, pode ser um erro de carregamento
+  // Por segurança, mostrar página de bloqueio
+  if (!subscriptionStatus) {
+    return (
+      <SubscriptionBlockedPage 
+        status="expired" 
+        message="Erro ao verificar subscrição. Por favor, tente novamente." 
+      />
     )
   }
 

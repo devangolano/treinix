@@ -76,8 +76,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const profile = await getUserProfile(result.data.id)
         if (profile) {
           console.log("Perfil do usuário carregado:", profile.id, profile.role)
-          // Atualizar o estado do usuário ANTES de retornar
+          // Atualizar o estado do usuário e parar de carregar
           setUser(profile)
+          setInitialAuthCheckDone(true)
           setIsLoading(false)
           return { success: true, user: profile }
         }
