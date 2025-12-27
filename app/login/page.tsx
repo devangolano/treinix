@@ -26,10 +26,11 @@ export default function LoginPage() {
   // Redirecionar se já estiver logado
   useEffect(() => {
     if (!isLoading && user) {
+      console.log("LoginPage: Usuário já autenticado, redirecionando...", user.role)
       if (user.role === "super_admin") {
-        router.push("/super-admin")
+        router.replace("/super-admin")
       } else {
-        router.push("/dashboard")
+        router.replace("/dashboard")
       }
     }
   }, [user, isLoading, router])
@@ -41,34 +42,30 @@ export default function LoginPage() {
     setIsRedirecting(false)
 
     try {
+      console.log("LoginPage: Tentando fazer login com", email)
       const result = await login(email, password)
 
       if (result.success && result.user) {
+        console.log("LoginPage: Login bem-sucedido, redirecionando para", result.user.role === "super_admin" ? "/super-admin" : "/dashboard")
         setIsRedirecting(true)
-        // Delay maior para garantir que o login foi processado completamente
-        // e que a sessão está estabelecida no navegador
-        await new Promise(resolve => setTimeout(resolve, 1000))
         
         // Redirecionar baseado na role
         const redirectUrl = result.user.role === "super_admin" ? "/super-admin" : "/dashboard"
         
         // Usar replace em vez de push para evitar voltar para login
-        router.replace(redirectUrl)
-        
-        // Fallback em caso de problema com router.replace
+        // Adicionar pequeno delay para garantir que o estado foi atualizado
         setTimeout(() => {
-          if (!isRedirecting) {
-            window.location.href = redirectUrl
-          }
-        }, 2000)
+          router.replace(redirectUrl)
+        }, 100)
       } else {
+        console.log("LoginPage: Falha no login")
         setError("Email ou senha incorretos.")
         setLoading(false)
         setIsRedirecting(false)
       }
     } catch (err) {
+      console.error("LoginPage: Erro ao fazer login", err)
       setError("Erro ao fazer login. Tente novamente.")
-      console.error(err)
       setLoading(false)
       setIsRedirecting(false)
     }

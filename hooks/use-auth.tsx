@@ -18,6 +18,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [initialAuthCheckDone, setInitialAuthCheckDone] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -25,14 +26,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Escutar mudanças no estado de autenticação do Supabase
     const unsubscribeFn = onAuthStateChange(async (authUser) => {
-      if (authUser) {
-        // Buscar o perfil completo do usuário
-        const profile = await getUserProfile(authUser.id)
-        setUser(profile)
-      } else {
+      try {
+        if (authUser) {
+          // Buscar o perfil completo do usuário
+          const profile = await getUserProfile(authUser.id)
+          if (profile) {
+            console.log("AuthStateChange: Usuário autenticado -", profile.id, profile.role)
+            setUser(profile)
+          } else {
+            console.warn("AuthStateChange: Perfil não encontrado para", authUser.id)
+            setUser(null)
+          }
+        } else {
+          console.log("AuthStateChange: Usuário não autenticado")
+          setUser(null)
+        }
+      } catch (error) {
+        console.error("Erro ao processar auth state change:", error)
         setUser(null)
+      } finally {
+        setIsLoading(false)
+        setInitialAuthCheckDone(true)
       }
-      setIsLoading(false)
     })
 
     // Armazenar a função unsubscribe
@@ -50,25 +65,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
+      console.log("Iniciando login para:", email)
+      setIsLoading(true)
+      
       const result = await signIn(email, password)
       if (result.success && result.data) {
-        console.log("Login bem-sucedido para:", email)
+        console.log("signIn retornou sucesso para:", email)
         
         // Buscar o perfil do usuário imediatamente após o login bem-sucedido
         const profile = await getUserProfile(result.data.id)
         if (profile) {
           console.log("Perfil do usuário carregado:", profile.id, profile.role)
+          // Atualizar o estado do usuário ANTES de retornar
           setUser(profile)
+          setIsLoading(false)
           return { success: true, user: profile }
         }
         console.error("Falha ao carregar perfil do usuário")
+        setIsLoading(false)
         return { success: false }
       } else {
         console.error("Erro no login:", result.error)
+        setIsLoading(false)
         return { success: false }
       }
     } catch (error) {
       console.error("Erro na autenticação:", error)
+      setIsLoading(false)
       return { success: false }
     }
   }
