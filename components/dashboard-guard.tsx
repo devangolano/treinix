@@ -1,9 +1,10 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/hooks/use-auth"
 import { Clock } from "lucide-react"
+import { safeNavigate } from "@/lib/navigation-utils"
 
 interface DashboardGuardProps {
   children: React.ReactNode
@@ -14,6 +15,7 @@ export function DashboardGuard({ children }: DashboardGuardProps) {
   const { user, isLoading } = useAuth()
   const hasCheckedAuth = useRef(false)
   const [localInitializing, setLocalInitializing] = useState(true)
+  const [isPending, startTransition] = useTransition()
 
   useEffect(() => {
     // Registrar que iniciamos a verificação
@@ -32,7 +34,9 @@ export function DashboardGuard({ children }: DashboardGuardProps) {
       // Super admin não pode acessar dashboard de centro
       if (user.role === "super_admin") {
         console.log("DashboardGuard: Usuário é super_admin, redirecionando para /super-admin")
-        router.replace("/super-admin")
+        startTransition(() => {
+          safeNavigate(router, "/super-admin", { fallbackDelay: 1500 })
+        })
         return
       }
 
@@ -56,13 +60,15 @@ export function DashboardGuard({ children }: DashboardGuardProps) {
       hasCheckedAuth.current = true
       
       console.log("DashboardGuard: Usuário não autenticado, redirecionando para /login")
-      router.replace("/login")
+      startTransition(() => {
+        safeNavigate(router, "/login", { fallbackDelay: 1500 })
+      })
       return
     }
   }, [user, isLoading, router])
 
   // Mostrar loading apenas se ainda estamos inicializando
-  if (localInitializing || (!user && isLoading)) {
+  if (localInitializing || (!user && isLoading) || isPending) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center space-y-4">

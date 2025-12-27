@@ -1,8 +1,6 @@
 "use client"
 
-import type React from "react"
-
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useTransition } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
@@ -13,6 +11,7 @@ import { Label } from "@/components/ui/label"
 import { AlertCircle } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { safeNavigate } from "@/lib/navigation-utils"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -23,17 +22,18 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [isRedirecting, setIsRedirecting] = useState(false)
   const hasRedirected = useRef(false)
+  const [isPending, startTransition] = useTransition()
 
   // Redirecionar se já estiver logado
   useEffect(() => {
     if (!isLoading && user && !hasRedirected.current) {
       hasRedirected.current = true
       console.log("LoginPage: Usuário já autenticado, redirecionando...", user.role)
-      if (user.role === "super_admin") {
-        router.replace("/super-admin")
-      } else {
-        router.replace("/dashboard")
-      }
+      const redirectUrl = user.role === "super_admin" ? "/super-admin" : "/dashboard"
+      
+      startTransition(() => {
+        safeNavigate(router, redirectUrl, { fallbackDelay: 1500 })
+      })
     }
   }, [user, isLoading, router])
 
@@ -55,16 +55,14 @@ export default function LoginPage() {
         // Redirecionar baseado na role
         const redirectUrl = result.user.role === "super_admin" ? "/super-admin" : "/dashboard"
         
-        // Usar replace em vez de push para evitar voltar para login
-        // Pequeno delay para garantir que o estado foi atualizado antes de redirecionar
         console.log("LoginPage: Aguardando 100ms antes de redirecionar para", redirectUrl)
         await new Promise(resolve => setTimeout(resolve, 100))
-        console.log("LoginPage: Fazendo router.replace para", redirectUrl)
+        console.log("LoginPage: Fazendo safeNavigate para", redirectUrl)
         
-        // NÃO setIsRedirecting(true) aqui, deixar o estado de loading/redirecionando
-        // para que a UI não pisque ou mude de estado desnecessariamente
-        router.replace(redirectUrl)
-        // Não precisa resetar o loading aqui porque a página vai mudar
+        setIsRedirecting(true)
+        startTransition(() => {
+          safeNavigate(router, redirectUrl, { fallbackDelay: 2000 })
+        })
       } else {
         console.log("LoginPage: Falha no login", result)
         setError("Email ou senha incorretos.")
@@ -142,8 +140,8 @@ export default function LoginPage() {
               />
             </div>
 
-            <Button type="submit" className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold" disabled={loading || isRedirecting}>
-              {loading ? "Entrando..." : isRedirecting ? "Redirecionando..." : "Entrar"}
+            <Button type="submit" className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold" disabled={loading || isRedirecting || isPending}>
+              {loading ? "Entrando..." : isRedirecting || isPending ? "Redirecionando..." : "Entrar"}
             </Button>
 
             <div className="text-center text-sm">
