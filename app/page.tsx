@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/hooks/use-auth"
 import { Header } from "@/components/header"
@@ -12,10 +12,12 @@ import { Footer } from "@/components/footer"
 export default function HomePage() {
   const router = useRouter()
   const { user, isLoading } = useAuth()
+  const hasRedirected = useRef(false)
 
   useEffect(() => {
-    if (!isLoading && user) {
-      router.push("/dashboard")
+    if (!isLoading && user && !hasRedirected.current) {
+      hasRedirected.current = true
+      router.replace("/dashboard")
     }
   }, [user, isLoading, router])
 
