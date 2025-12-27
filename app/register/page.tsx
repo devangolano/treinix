@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
@@ -19,6 +19,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 export default function RegisterPage() {
   const router = useRouter()
   const { login, user, isLoading } = useAuth()
+  const hasRedirected = useRef(false)
   const [formData, setFormData] = useState({
     centroName: "",
     email: "",
@@ -32,11 +33,12 @@ export default function RegisterPage() {
 
   // Redirecionar se já estiver logado
   useEffect(() => {
-    if (!isLoading && user) {
+    if (!isLoading && user && !hasRedirected.current) {
+      hasRedirected.current = true
       if (user.role === "super_admin") {
-        router.push("/super-admin")
+        router.replace("/super-admin")
       } else {
-        router.push("/dashboard")
+        router.replace("/dashboard")
       }
     }
   }, [user, isLoading, router])

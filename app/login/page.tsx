@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
@@ -22,10 +22,12 @@ export default function LoginPage() {
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
   const [isRedirecting, setIsRedirecting] = useState(false)
+  const hasRedirected = useRef(false)
 
   // Redirecionar se já estiver logado
   useEffect(() => {
-    if (!isLoading && user) {
+    if (!isLoading && user && !hasRedirected.current) {
+      hasRedirected.current = true
       console.log("LoginPage: Usuário já autenticado, redirecionando...", user.role)
       if (user.role === "super_admin") {
         router.replace("/super-admin")

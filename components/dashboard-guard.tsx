@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/hooks/use-auth"
 import { Clock } from "lucide-react"
@@ -12,7 +12,7 @@ interface DashboardGuardProps {
 export function DashboardGuard({ children }: DashboardGuardProps) {
   const router = useRouter()
   const { user, isLoading } = useAuth()
-  const [hasCheckedAuth, setHasCheckedAuth] = useState(false)
+  const hasCheckedAuth = useRef(false)
 
   useEffect(() => {
     // Esperar até que o loading inicial termine
@@ -21,19 +21,24 @@ export function DashboardGuard({ children }: DashboardGuardProps) {
       return
     }
 
-    setHasCheckedAuth(true)
+    // Se já foi verificado, não fazer novamente
+    if (hasCheckedAuth.current) {
+      return
+    }
+
+    hasCheckedAuth.current = true
 
     // Super admin não pode acessar dashboard de centro
     if (user?.role === "super_admin") {
       console.log("DashboardGuard: Usuário é super_admin, redirecionando para /super-admin")
-      router.push("/super-admin")
+      router.replace("/super-admin")
       return
     }
 
     // Usuário não autenticado
     if (!user) {
       console.log("DashboardGuard: Usuário não autenticado, redirecionando para /login")
-      router.push("/login")
+      router.replace("/login")
       return
     }
 
@@ -42,7 +47,7 @@ export function DashboardGuard({ children }: DashboardGuardProps) {
   }, [user, isLoading, router])
 
   // Mostrar loading enquanto verifica autenticação
-  if (isLoading || !hasCheckedAuth) {
+  if (isLoading || !hasCheckedAuth.current) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center space-y-4">
