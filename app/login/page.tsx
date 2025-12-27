@@ -1,94 +1,63 @@
 "use client"
 
-import { useState, useEffect, useRef, useTransition } from "react"
-import Link from "next/link"
-import Image from "next/image"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
+import { useAuth } from "@/hooks/use-auth"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { AlertCircle } from "lucide-react"
-import { useAuth } from "@/hooks/use-auth"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { safeNavigate } from "@/lib/navigation-utils"
+import { AlertCircle } from "lucide-react"
+import Link from "next/link"
+import Image from "next/image"
 
+/**
+ * LoginPage - SIMPLIFICADO
+ * 
+ * NÃO faz redirecionamento automático
+ * Redirecionamento é feito via proxy.ts (server-side)
+ * ou após login bem-sucedido com window.location
+ */
 export default function LoginPage() {
   const router = useRouter()
-  const { login, user, isLoading } = useAuth()
+  const { login } = useAuth()
+  
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
-  const [isRedirecting, setIsRedirecting] = useState(false)
-  const hasRedirected = useRef(false)
-  const [isPending, startTransition] = useTransition()
-
-  // Redirecionar se já estiver logado
-  useEffect(() => {
-    if (!isLoading && user && !hasRedirected.current) {
-      hasRedirected.current = true
-      console.log("LoginPage: Usuário já autenticado, redirecionando...", user.role)
-      const redirectUrl = user.role === "super_admin" ? "/super-admin" : "/dashboard"
-      
-      startTransition(() => {
-        safeNavigate(router, redirectUrl, { fallbackDelay: 1500 })
-      })
-    }
-  }, [user, isLoading, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
     setLoading(true)
-    setIsRedirecting(false)
 
     try {
-      console.log("LoginPage: Tentando fazer login com", email)
+      console.log("[LoginPage] Tentando login com:", email)
       const result = await login(email, password)
-      
-      console.log("LoginPage: Login retornou resultado:", result.success, result.user?.role)
 
       if (result.success && result.user) {
-        console.log("LoginPage: Login bem-sucedido, redirecionando para", result.user.role === "super_admin" ? "/super-admin" : "/dashboard")
+        console.log("[LoginPage] Login bem-sucedido!", result.user.role)
         
-        // Redirecionar baseado na role
+        // Usar hard redirect via window.location
+        // Isso força o navegador a refazer a requisição, 
+        // e proxy.ts vai deixar passar porque token agora é válido
         const redirectUrl = result.user.role === "super_admin" ? "/super-admin" : "/dashboard"
         
-        console.log("LoginPage: Aguardando 100ms antes de redirecionar para", redirectUrl)
-        await new Promise(resolve => setTimeout(resolve, 100))
-        console.log("LoginPage: Fazendo safeNavigate para", redirectUrl)
-        
-        setIsRedirecting(true)
-        startTransition(() => {
-          safeNavigate(router, redirectUrl, { fallbackDelay: 2000 })
-        })
+        console.log("[LoginPage] Redirecionando para:", redirectUrl)
+        // IMPORTANTE: Usar window.location para hard redirect
+        // Isso força navegador a refazer requisição com novo token
+        window.location.href = redirectUrl
       } else {
-        console.log("LoginPage: Falha no login", result)
         setError("Email ou senha incorretos.")
         setLoading(false)
-        setIsRedirecting(false)
       }
     } catch (err) {
-      console.error("LoginPage: Erro ao fazer login", err)
+      console.error("[LoginPage] Erro:", err)
       setError("Erro ao fazer login. Tente novamente.")
       setLoading(false)
-      setIsRedirecting(false)
     }
-  }
-
-  // Mostrar loading enquanto verifica autenticação
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-blue-950">
-        <div className="text-center">
-          <div className="inline-block">
-            <div className="h-12 w-12 animate-spin rounded-full border-4 border-slate-700 border-t-orange-500"></div>
-          </div>
-          <p className="mt-4 text-white">Carregando...</p>
-        </div>
-      </div>
-    )
   }
 
   return (
@@ -97,7 +66,13 @@ export default function LoginPage() {
         <CardHeader className="space-y-4">
           <div className="flex justify-center">
             <Link href="/" className="flex items-center">
-              <Image src="/logo.png" alt="Treinix Logo" width={140} height={35} className="h-8 w-auto" />
+              <Image
+                src="/logo.png"
+                alt="Treinix Logo"
+                width={140}
+                height={35}
+                className="h-8 w-auto"
+              />
             </Link>
           </div>
           <div className="text-center">
@@ -115,7 +90,9 @@ export default function LoginPage() {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-white font-semibold">Email</Label>
+              <Label htmlFor="email" className="text-white font-semibold">
+                Email
+              </Label>
               <Input
                 id="email"
                 type="email"
@@ -124,11 +101,14 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 className="bg-blue-800/40 border-blue-700 text-white placeholder:text-blue-200 focus:border-orange-500 focus:ring-orange-500"
                 required
+                disabled={loading}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-white font-semibold">Senha</Label>
+              <Label htmlFor="password" className="text-white font-semibold">
+                Senha
+              </Label>
               <Input
                 id="password"
                 type="password"
@@ -137,16 +117,24 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 className="bg-blue-800/40 border-blue-700 text-white placeholder:text-blue-200 focus:border-orange-500 focus:ring-orange-500"
                 required
+                disabled={loading}
               />
             </div>
 
-            <Button type="submit" className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold" disabled={loading || isRedirecting || isPending}>
-              {loading ? "Entrando..." : isRedirecting || isPending ? "Redirecionando..." : "Entrar"}
+            <Button
+              type="submit"
+              className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold"
+              disabled={loading}
+            >
+              {loading ? "Entrando..." : "Entrar"}
             </Button>
 
             <div className="text-center text-sm">
               <span className="text-blue-200">Ainda não tem uma conta? </span>
-              <Link href="/register" className="text-orange-400 hover:text-orange-300 hover:underline font-semibold">
+              <Link
+                href="/register"
+                className="text-orange-400 hover:text-orange-300 hover:underline font-semibold"
+              >
                 Criar conta grátis
               </Link>
             </div>
