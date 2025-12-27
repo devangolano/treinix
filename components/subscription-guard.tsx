@@ -236,6 +236,11 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
 
         // Status é "active" mas não tem subscrição ativa = precisa renovar
         console.log("[SubscriptionGuard] Status active mas sem subscrição ativa")
+        setSubscriptionStatus({
+          hasAccess: false,
+          status: "expired",
+          message: "Sua subscrição expirou. Renove para continuar usando a plataforma.",
+        })
         setChecking(false)
         return
       }
