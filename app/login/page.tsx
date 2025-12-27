@@ -51,7 +51,6 @@ export default function LoginPage() {
 
       if (result.success && result.user) {
         console.log("LoginPage: Login bem-sucedido, redirecionando para", result.user.role === "super_admin" ? "/super-admin" : "/dashboard")
-        setIsRedirecting(true)
         
         // Redirecionar baseado na role
         const redirectUrl = result.user.role === "super_admin" ? "/super-admin" : "/dashboard"
@@ -61,7 +60,11 @@ export default function LoginPage() {
         console.log("LoginPage: Aguardando 100ms antes de redirecionar para", redirectUrl)
         await new Promise(resolve => setTimeout(resolve, 100))
         console.log("LoginPage: Fazendo router.replace para", redirectUrl)
+        
+        // NÃO setIsRedirecting(true) aqui, deixar o estado de loading/redirecionando
+        // para que a UI não pisque ou mude de estado desnecessariamente
         router.replace(redirectUrl)
+        // Não precisa resetar o loading aqui porque a página vai mudar
       } else {
         console.log("LoginPage: Falha no login", result)
         setError("Email ou senha incorretos.")
