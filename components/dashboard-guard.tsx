@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/hooks/use-auth"
 import { Clock } from "lucide-react"
@@ -13,41 +13,56 @@ export function DashboardGuard({ children }: DashboardGuardProps) {
   const router = useRouter()
   const { user, isLoading } = useAuth()
   const hasCheckedAuth = useRef(false)
+  const [localInitializing, setLocalInitializing] = useState(true)
 
   useEffect(() => {
-    // Esperar até que o loading inicial termine
+    // Registrar que iniciamos a verificação
+    console.log("DashboardGuard: Iniciando, user:", user?.id, "isLoading:", isLoading)
+    
+    // Se o usuário já está setado (login bem-sucedido), prosseguir imediatamente
+    if (user) {
+      console.log("DashboardGuard: Usuário já setado, processando...")
+      
+      // Evitar múltiplas verificações
+      if (hasCheckedAuth.current) {
+        return
+      }
+      hasCheckedAuth.current = true
+
+      // Super admin não pode acessar dashboard de centro
+      if (user.role === "super_admin") {
+        console.log("DashboardGuard: Usuário é super_admin, redirecionando para /super-admin")
+        router.replace("/super-admin")
+        return
+      }
+
+      // centro_admin e secretario podem acessar
+      console.log("DashboardGuard: Usuário autorizado -", user.role)
+      setLocalInitializing(false)
+      return
+    }
+
+    // Se ainda está loading, aguardar
     if (isLoading) {
-      console.log("DashboardGuard: Aguardando verificação de autenticação...")
+      console.log("DashboardGuard: Aguardando carregamento de auth...")
       return
     }
 
-    // Se já foi verificado, não fazer novamente
-    if (hasCheckedAuth.current) {
-      return
-    }
-
-    hasCheckedAuth.current = true
-
-    // Super admin não pode acessar dashboard de centro
-    if (user?.role === "super_admin") {
-      console.log("DashboardGuard: Usuário é super_admin, redirecionando para /super-admin")
-      router.replace("/super-admin")
-      return
-    }
-
-    // Usuário não autenticado
-    if (!user) {
+    // Usuário não autenticado e não está mais loading
+    if (!user && !isLoading) {
+      if (hasCheckedAuth.current) {
+        return
+      }
+      hasCheckedAuth.current = true
+      
       console.log("DashboardGuard: Usuário não autenticado, redirecionando para /login")
       router.replace("/login")
       return
     }
-
-    // Secretario e centro_admin podem acessar
-    console.log("DashboardGuard: Usuário autorizado -", user.role)
   }, [user, isLoading, router])
 
-  // Mostrar loading enquanto verifica autenticação
-  if (isLoading) {
+  // Mostrar loading apenas se ainda estamos inicializando
+  if (localInitializing || (!user && isLoading)) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center space-y-4">
@@ -58,7 +73,7 @@ export function DashboardGuard({ children }: DashboardGuardProps) {
     )
   }
 
-  // Se não está loading mas não tem usuário, não renderizar
+  // Se não tem usuário, não renderizar
   if (!user) {
     return null
   }
