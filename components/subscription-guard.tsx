@@ -152,24 +152,7 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
     checkSubscription(user.centroId)
   }, [user, authLoading, pathname])
 
-  // Polling automático a cada 30 segundos para refrescar status (apenas se tem centroId e não é super_admin)
-  useEffect(() => {
-    if (authLoading || !user || !user.centroId || user.role === "super_admin" || checking || isBlockedRoute) {
-      return
-    }
-
-    console.log("[SubscriptionGuard] Iniciando polling de subscrição a cada 30s")
-    const interval = setInterval(() => {
-      console.log("[SubscriptionGuard] Refrescando verificação de subscrição (polling)")
-      if (user.centroId) {
-        checkSubscription(user.centroId)
-      }
-    }, 30000) // 30 segundos
-
-    return () => clearInterval(interval)
-  }, [user, checking, isBlockedRoute])
-
-  // Refrescar quando volta à aba visível
+  // Refrescar quando volta à aba visível (opcional, pode ser desativado se causar problemas)
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible" && user && user.centroId && !isBlockedRoute) {
@@ -182,7 +165,7 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange)
     }
-  }, [user])
+  }, [user, isBlockedRoute])
 
   // Registrar listener para refresh disparado externamente
   useEffect(() => {
@@ -198,14 +181,14 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
 
   const checkSubscription = async (centroId: string) => {
     try {
-      setChecking(true)
+      // NÃO colocar setChecking(true) aqui - evita reload visual desnecessário
+      // Só usar setChecking para a verificação inicial
       
       // Buscar dados do centro
       const centro = await centroService.getById(centroId)
       if (!centro) {
         console.log("[SubscriptionGuard] Centro não encontrado")
         setSubscriptionStatus({ hasAccess: false, status: "blocked", message: "Centro não encontrado" })
-        setChecking(false)
         return
       }
 
@@ -219,7 +202,6 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
           status: "blocked",
           message: "Conta bloqueada. Entre em contacto com o suporte.",
         })
-        setChecking(false)
         return
       }
 
@@ -237,7 +219,6 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
             daysRemaining,
             message: `Período de teste - ${daysRemaining} dias restantes`,
           })
-          setChecking(false)
           return
         } else {
           // Teste expirado - agora verificar se há subscrição ativa
@@ -264,7 +245,6 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
                 daysRemaining,
                 message: `Subscrição ativa - ${daysRemaining} dias restantes`,
               })
-              setChecking(false)
               return
             }
           }
@@ -279,7 +259,6 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
           status: "expired",
           message: "Sua subscrição expirou. Renove para continuar usando a plataforma.",
         })
-        setChecking(false)
         return
       }
 
@@ -290,11 +269,15 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
         status: "expired",
         message: "Status de subscrição inválido. Entre em contacto com o suporte.",
       })
-      setChecking(false)
     } catch (error) {
       console.error("[SubscriptionGuard] Erro ao verificar subscrição:", error)
       setSubscriptionStatus({ hasAccess: false, status: "expired", message: "Erro ao verificar acesso" })
-      setChecking(false)
+    } finally {
+      // Só colocar checking como false na verificação inicial (quando checking era true)
+      // Nas verificações subsequentes (polling), NÃO mudamos checking
+      if (checking) {
+        setChecking(false)
+      }
     }
   }
 
