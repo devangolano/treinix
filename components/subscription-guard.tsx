@@ -40,34 +40,48 @@ function TrialExpiringDialog({ daysRemaining, onRenew }: TrialExpiringDialogProp
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <div className="flex items-center gap-2">
-            <Clock className="h-5 w-5 text-orange-600" />
-            <DialogTitle>Período de Teste</DialogTitle>
+      <DialogContent className="sm:max-w-md bg-blue-900 border-blue-700 shadow-2xl">
+        <DialogHeader className="text-center space-y-3">
+          <div className="flex justify-center">
+            <div className="h-16 w-16 rounded-full bg-orange-500/20 flex items-center justify-center">
+              <Clock className="h-8 w-8 text-orange-500" />
+            </div>
           </div>
-          <DialogDescription>
-            Seu período de teste está terminando em breve
-          </DialogDescription>
+          <div className="space-y-1">
+            <DialogTitle className="text-2xl text-white">Período de Teste</DialogTitle>
+            <DialogDescription className="text-blue-100">
+              Seu período de teste está terminando em breve
+            </DialogDescription>
+          </div>
         </DialogHeader>
         
-        <div className="space-y-4">
-          <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
-            <p className="text-sm">
-              <strong>Dias restantes:</strong>{" "}
-              <span className="text-lg font-bold text-orange-600">{daysRemaining}</span>
-            </p>
-            <p className="text-xs text-muted-foreground mt-2">
+        <div className="space-y-4 py-6">
+          <div className="p-6 bg-white/10 rounded-xl border border-blue-600/30 backdrop-blur-sm">
+            <div className="text-center space-y-2">
+              <p className="text-blue-100 text-sm font-medium">Dias restantes</p>
+              <p className="text-5xl font-bold text-orange-500">{daysRemaining}</p>
+            </div>
+          </div>
+          
+          <div className="bg-blue-700/40 rounded-lg p-4 border border-blue-600/30">
+            <p className="text-sm text-blue-100 text-center">
               Após o encerramento do teste, você precisará de uma subscrição ativa para continuar usando a plataforma.
             </p>
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
+        <DialogFooter className="flex gap-3 pt-2">
+          <Button 
+            variant="outline" 
+            onClick={() => setOpen(false)}
+            className="flex-1 bg-blue-800/50 border-blue-600 text-white hover:bg-blue-700/70 hover:text-white"
+          >
             Fechar
           </Button>
-          <Button onClick={handleRenew} className="bg-orange-600 hover:bg-orange-700">
+          <Button 
+            onClick={handleRenew} 
+            className="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-semibold shadow-lg"
+          >
             Renovar Agora
           </Button>
         </DialogFooter>
