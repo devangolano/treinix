@@ -5,35 +5,25 @@ export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Rotas públicas que não precisam de autenticação
-  const publicRoutes = ["/", "/login", "/register"]
-  const isPublicRoute = publicRoutes.some((route) => pathname === route || pathname.startsWith("/api/public"))
+  const publicRoutes = ["/", "/login", "/register", "/api"]
+  const isPublicRoute = publicRoutes.some((route) => pathname === route || pathname.startsWith(route))
 
   if (isPublicRoute) {
     return NextResponse.next()
   }
 
-  // Verificar autenticação (simulado via headers para o mock)
-  const authToken = request.cookies.get("auth-token")?.value
-
-  if (!authToken) {
-    // Redirecionar para login se não autenticado
-    return NextResponse.redirect(new URL("/login", request.url))
-  }
-
-  // Nota: A lógica de verificação de role (super_admin vs centro_admin) 
-  // é feita no lado do cliente nos layouts e guards
-  // Isso permite transições suaves e melhor UX
-
-  // Rotas do super admin - apenas verificar autenticação aqui
-  if (pathname.startsWith("/super-admin")) {
-    return NextResponse.next()
-  }
-
-  // Rotas dos centros - apenas verificar autenticação aqui
-  if (pathname.startsWith("/dashboard")) {
-    return NextResponse.next()
-  }
-
+  // Para rotas protegidas, deixar o cliente (componentes) fazer a verificação
+  // O middleware NÃO deve redirecionar pois:
+  // 1. Precisa aguardar o hydration do React no cliente
+  // 2. O AuthProvider precisa carregar os dados de sessão do Supabase
+  // 3. Evita race conditions entre middleware e client-side guards
+  //
+  // Os guards no cliente (DashboardGuard, SubscriptionGuard) cuidam de:
+  // - Verificar se há sessão ativa
+  // - Redirecionar para /login se não autenticado
+  // - Verificar role (super_admin vs centro_admin)
+  // - Verificar subscrição ativa
+  
   return NextResponse.next()
 }
 

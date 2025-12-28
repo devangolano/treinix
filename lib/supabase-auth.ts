@@ -152,6 +152,7 @@ export async function getCurrentUser() {
  */
 export function onAuthStateChange(callback: (user: any | null) => void) {
   const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
+    console.log("[AuthStateChange] Evento:", event, "Sessão:", session?.user?.email)
     callback(session?.user || null)
   })
 
@@ -169,10 +170,19 @@ export function onAuthStateChange(callback: (user: any | null) => void) {
  */
 export async function getUserProfile(userId: string): Promise<User | null> {
   try {
+    console.log("[getUserProfile] Buscando perfil para userId:", userId)
+    
     // Buscar o usuário autenticado atual do Supabase
     const { data } = await supabase.auth.getUser()
     
     if (!data?.user) {
+      console.log("[getUserProfile] Nenhum usuário autenticado")
+      return null
+    }
+
+    // Verificar se o userId coincide
+    if (data.user.id !== userId) {
+      console.warn("[getUserProfile] userId não coincide com usuário autenticado")
       return null
     }
 
@@ -190,6 +200,7 @@ export async function getUserProfile(userId: string): Promise<User | null> {
         .single()
 
       if (userData) {
+        console.log("[getUserProfile] Dados do usuário encontrados:", userData.name)
         userRole = userData.role || userRole
         centroId = userData.centro_id
         userName = userData.name || userName
@@ -197,7 +208,9 @@ export async function getUserProfile(userId: string): Promise<User | null> {
     } catch (error: any) {
       // PGRST116 = Nenhuma linha encontrada (usuário não está na tabela users, pode ser super_admin ou admin que se registrou)
       if (error?.code !== "PGRST116") {
-        console.error("Erro ao buscar dados do usuário na tabela users:", error)
+        console.error("[getUserProfile] Erro ao buscar dados do usuário na tabela users:", error)
+      } else {
+        console.log("[getUserProfile] Usuário não encontrado na tabela users (pode ser super_admin)")
       }
       
       // Se não encontrar na tabela users, tentar buscar centroId por email
@@ -210,12 +223,13 @@ export async function getUserProfile(userId: string): Promise<User | null> {
             .single()
 
           if (centroData?.id) {
+            console.log("[getUserProfile] centroId encontrado pelo email")
             centroId = centroData.id
           }
         } catch (centroErrorInner: any) {
           // Se não encontrar centro também, log apenas se não for erro de "not found"
           if (centroErrorInner?.code !== "PGRST116") {
-            console.error("Erro ao buscar centroId:", centroErrorInner)
+            console.error("[getUserProfile] Erro ao buscar centroId:", centroErrorInner)
           }
         }
       }
@@ -226,8 +240,7 @@ export async function getUserProfile(userId: string): Promise<User | null> {
       localStorage.setItem(`centro_${data.user.id}`, centroId)
     }
 
-    // Retornar dados do auth com dados da tabela users
-    return {
+    const profile: User = {
       id: data.user.id,
       name: userName,
       email: data.user.email || "",
@@ -236,8 +249,16 @@ export async function getUserProfile(userId: string): Promise<User | null> {
       createdAt: new Date(data.user.created_at),
       updatedAt: new Date(data.user.updated_at || data.user.created_at),
     }
+
+    console.log("[getUserProfile] Perfil carregado:", { 
+      email: profile.email, 
+      role: profile.role, 
+      centroId: profile.centroId 
+    })
+
+    return profile
   } catch (error) {
-    console.error("Erro ao obter perfil do usuário:", error)
+    console.error("[getUserProfile] Erro ao obter perfil do usuário:", error)
     return null
   }
 }
