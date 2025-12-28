@@ -139,7 +139,7 @@ export function CentroSidebar() {
       <div className="md:hidden fixed top-0 left-0 right-0 z-50 flex h-16 items-center justify-between border-b border-blue-800 bg-blue-950 px-4">
         <div className="flex items-center gap-2">
           <GraduationCap className="h-6 w-6 text-orange-400" />
-          <span className="text-lg font-bold text-white">Formação-Ao</span>
+          <span className="text-lg font-bold text-white">Treinix</span>
         </div>
 
         <Sheet>
