@@ -4,7 +4,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { Building2, FileText, LayoutDashboard, LogOut, Menu, X } from "lucide-react"
+import { Building2, FileText, LayoutDashboard, LogOut, Menu, X, Award } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer"
 import { signOut } from "@/lib/supabase-auth"
@@ -21,6 +21,11 @@ const menuItems = [
     title: "Centros",
     icon: Building2,
     href: "/super-admin/centros",
+  },
+  {
+    title: "Certificados",
+    icon: Award,
+    href: "/super-admin/certificados",
   },
   {
     title: "Subscrições",

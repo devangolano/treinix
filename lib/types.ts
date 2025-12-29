@@ -110,3 +110,44 @@ export interface PagamentoInstallment {
   paidAt?: Date
   status: "pending" | "paid" | "overdue"
 }
+
+// Tipos de Certificado
+export interface CertificateTemplate {
+  id: string
+  centroId: string
+  name: string
+  description?: string
+  pdfUrl: string
+  filePath: string
+  isActive: boolean
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface Certificate {
+  id: string
+  centroId: string
+  alunoId: string
+  turmaId: string
+  templateId: string
+  certificateNumber: string
+  pdfUrl?: string
+  filePath?: string
+  issueDate: Date
+  status: "issued" | "revoked" | "expired"
+  issuedBy?: string
+  revokedAt?: Date
+  revokeReason?: string
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface CertificateLog {
+  id: string
+  certificateId: string
+  action: "issued" | "revoked" | "regenerated" | "viewed"
+  actionBy?: string
+  actionDate: Date
+  details?: Record<string, any>
+  createdAt: Date
+}

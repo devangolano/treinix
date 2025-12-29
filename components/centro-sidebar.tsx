@@ -14,6 +14,7 @@ import {
   FileText,
   LogOut,
   Menu,
+  Award,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { signOut } from "@/lib/supabase-auth"
@@ -50,6 +51,12 @@ const menuItems = [
     title: "Pagamentos",
     icon: CreditCard,
     href: "/dashboard/pagamentos",
+    requiredRole: null, // Todos podem ver
+  },
+  {
+    title: "Certificados",
+    icon: Award,
+    href: "/dashboard/certificados",
     requiredRole: null, // Todos podem ver
   },
   {
