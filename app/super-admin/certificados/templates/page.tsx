@@ -72,7 +72,7 @@ export default function CertificateTemplatesPage() {
       return
     }
 
-    // Se não é super_admin, redireciona
+    // Se não é super_admin, redireciona para dashboard
     if (user.role !== "super_admin") {
       router.push("/dashboard")
       return

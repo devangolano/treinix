@@ -10,7 +10,47 @@ import {
 // ============================================
 
 /**
+ * Obter o modelo ativo de um centro
+ * NOVO: Cada centro só tem 1 modelo ativo. Usado durante emissão.
+ */
+export async function getCertificateTemplateForCenter(
+  centroId: string
+): Promise<CertificateTemplate | null> {
+  try {
+    const { data, error } = await supabase
+      .from("certificate_templates")
+      .select("*")
+      .eq("centro_id", centroId)
+      .eq("is_active", true)
+      .single()
+
+    if (error) {
+      if (error.code === "PGRST116") return null // Nenhum modelo ativo
+      throw error
+    }
+    
+    // Mapear snake_case para camelCase
+    if (!data) return null
+    return {
+      id: data.id,
+      centroId: data.centro_id,
+      name: data.name,
+      description: data.description,
+      pdfUrl: data.pdf_url,
+      filePath: data.file_path,
+      isActive: data.is_active,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at),
+    }
+  } catch (error) {
+    console.error("Erro ao buscar modelo ativo do centro:", error)
+    throw error
+  }
+}
+
+/**
  * Obter todos os modelos de certificados de um centro
+ * Usado por centro_admin para gerenciar modelos (carregar novo, etc)
  */
 export async function getCertificateTemplates(
   centroId: string
@@ -20,13 +60,43 @@ export async function getCertificateTemplates(
       .from("certificate_templates")
       .select("*")
       .eq("centro_id", centroId)
-      .eq("is_active", true)
+      .order("created_at", { ascending: false })
+
+    if (error) throw error
+    
+    // Mapear snake_case para camelCase
+    return (data || []).map((t: any) => ({
+      id: t.id,
+      centroId: t.centro_id,
+      name: t.name,
+      description: t.description,
+      pdfUrl: t.pdf_url,
+      filePath: t.file_path,
+      isActive: t.is_active,
+      createdAt: new Date(t.created_at),
+      updatedAt: new Date(t.updated_at),
+    }))
+  } catch (error) {
+    console.error("Erro ao buscar modelos de certificados:", error)
+    throw error
+  }
+}
+
+/**
+ * Obter todos os modelos de certificados de TODOS os centros
+ * Usado por super_admin para gerenciar modelos globalmente
+ */
+export async function getAllCertificateTemplates(): Promise<CertificateTemplate[]> {
+  try {
+    const { data, error } = await supabase
+      .from("certificate_templates")
+      .select("*")
       .order("created_at", { ascending: false })
 
     if (error) throw error
     return data || []
   } catch (error) {
-    console.error("Erro ao buscar modelos de certificados:", error)
+    console.error("Erro ao buscar todos os modelos de certificados:", error)
     throw error
   }
 }
@@ -278,6 +348,7 @@ export async function issueCertificate(
     pdfUrl?: string
     filePath?: string
     issueDate?: Date
+    finalGrade?: number
   }
 ): Promise<Certificate> {
   try {
@@ -298,6 +369,7 @@ export async function issueCertificate(
         pdf_url: options?.pdfUrl,
         file_path: options?.filePath,
         issue_date: options?.issueDate || new Date(),
+        final_grade: options?.finalGrade || null,
         issued_by: issuedBy,
         status: "issued",
       })
@@ -312,7 +384,7 @@ export async function issueCertificate(
         data.id,
         "issued",
         issuedBy,
-        { templateId, turmaId }
+        { templateId, turmaId, finalGrade: options?.finalGrade }
       )
     }
 

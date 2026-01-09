@@ -34,17 +34,20 @@ CREATE INDEX idx_centros_subscription_status ON centros(subscription_status);
 -- ============================================
 CREATE TABLE users (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  auth_user_id UUID, -- UUID do Supabase Auth
   centro_id UUID REFERENCES centros(id) ON DELETE CASCADE,
   name VARCHAR(255) NOT NULL,
   email VARCHAR(255) NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
   role VARCHAR(20) NOT NULL CHECK (role IN ('super_admin', 'centro_admin', 'secretario')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  CONSTRAINT unique_auth_user_id UNIQUE(auth_user_id)
 );
 
 -- Índices
 CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_users_auth_user_id ON users(auth_user_id);
 CREATE INDEX idx_users_centro_id ON users(centro_id);
 CREATE INDEX idx_users_role ON users(role);
 

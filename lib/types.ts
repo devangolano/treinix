@@ -134,6 +134,7 @@ export interface Certificate {
   pdfUrl?: string
   filePath?: string
   issueDate: Date
+  finalGrade?: number
   status: "issued" | "revoked" | "expired"
   issuedBy?: string
   revokedAt?: Date

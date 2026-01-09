@@ -165,6 +165,33 @@ export function onAuthStateChange(callback: (user: any | null) => void) {
 }
 
 /**
+ * Obtém o ID da tabela users baseado no auth_user_id do Supabase Auth
+ * Necessário para inserir certificados com issued_by
+ */
+export async function getUserDatabaseId(authUserId: string): Promise<string | null> {
+  try {
+    const { data, error } = await supabase
+      .from("users")
+      .select("id")
+      .eq("auth_user_id", authUserId)
+      .single()
+
+    if (error) {
+      if (error.code === "PGRST116") {
+        console.log("[getUserDatabaseId] Usuário não encontrado na tabela users:", authUserId)
+        return null
+      }
+      throw error
+    }
+
+    return data?.id || null
+  } catch (error) {
+    console.error("[getUserDatabaseId] Erro ao obter ID do banco de dados:", error)
+    return null
+  }
+}
+
+/**
  * Obtém os dados do perfil do usuário
  * Usa dados do Supabase Auth e tenta buscar centroId
  */

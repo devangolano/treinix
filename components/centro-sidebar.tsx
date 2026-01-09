@@ -1,5 +1,6 @@
 "use client"
 
+import React from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
@@ -83,6 +84,7 @@ function SidebarContent() {
   const pathname = usePathname()
   const router = useRouter()
   const { user } = useAuth()
+  const [expandCertificados, setExpandCertificados] = React.useState(false)
 
   const handleLogout = async () => {
     await signOut()
@@ -104,7 +106,71 @@ function SidebarContent() {
       <nav className="flex-1 space-y-1 p-4">
         {visibleMenuItems.map((item) => {
           const Icon = item.icon
-          const isActive = pathname === item.href
+          const isActive = pathname === item.href || (item.title === "Certificados" && pathname.startsWith("/dashboard/certificados"))
+
+          // Submenu para Certificados
+          if (item.title === "Certificados") {
+            return (
+              <div key={item.href}>
+                <button
+                  onClick={() => setExpandCertificados(!expandCertificados)}
+                  className={cn(
+                    "w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                    isActive
+                      ? "bg-orange-500 text-white"
+                      : "text-blue-300 hover:bg-blue-900 hover:text-white",
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                  {item.title}
+                  <span className={`ml-auto transition-transform ${expandCertificados ? "rotate-180" : ""}`}>
+                    ▼
+                  </span>
+                </button>
+
+                {expandCertificados && (
+                  <div className="ml-4 space-y-1 mt-1">
+                    <Link
+                      href="/dashboard/certificados"
+                      className={cn(
+                        "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                        pathname === "/dashboard/certificados"
+                          ? "bg-blue-900 text-orange-400"
+                          : "text-blue-300 hover:bg-blue-900 hover:text-white",
+                      )}
+                    >
+                      <FileText className="h-4 w-4" />
+                      Dashboard
+                    </Link>
+                    <Link
+                      href="/dashboard/certificados/emitir"
+                      className={cn(
+                        "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                        pathname === "/dashboard/certificados/emitir"
+                          ? "bg-blue-900 text-orange-400"
+                          : "text-blue-300 hover:bg-blue-900 hover:text-white",
+                      )}
+                    >
+                      <FileText className="h-4 w-4" />
+                      Emitir
+                    </Link>
+                    <Link
+                      href="/dashboard/certificados/modelo"
+                      className={cn(
+                        "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                        pathname === "/dashboard/certificados/modelo"
+                          ? "bg-blue-900 text-orange-400"
+                          : "text-blue-300 hover:bg-blue-900 hover:text-white",
+                      )}
+                    >
+                      <Award className="h-4 w-4" />
+                      Configurar Modelo
+                    </Link>
+                  </div>
+                )}
+              </div>
+            )
+          }
 
           return (
             <Link

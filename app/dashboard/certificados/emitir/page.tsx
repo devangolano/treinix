@@ -2,8 +2,19 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import Link from "next/link"
+import { supabase } from "@/lib/supabase"
+import { useAuth } from "@/hooks/use-auth"
+import { getCertificateTemplateForCenter, issueCertificate } from "@/lib/certificate-services"
+import { getUserDatabaseId } from "@/lib/supabase-auth"
+import { CertificateTemplate } from "@/lib/types"
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "@/components/ui/card"
 import {
   Select,
   SelectContent,
@@ -11,29 +22,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { ArrowLeft, Upload, FileText, Loader2, Check, Settings } from "lucide-react"
-import Link from "next/link"
-import { useAuth } from "@/hooks/use-auth"
-import {
-  getCertificateTemplates,
-  issueCertificate,
-  getCertificateByAlunoAndTurma,
-} from "@/lib/certificate-services"
-import { supabase } from "@/lib/supabase"
-import { CentroSidebar } from "@/components/centro-sidebar"
 import { Spinner } from "@/components/ui/spinner"
+import { CentroSidebar } from "@/components/centro-sidebar"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
+  ArrowLeft,
+  Check,
+  FileText,
+  Loader2,
+  AlertTriangle,
+} from "lucide-react"
 
 interface Turma {
   id: string
@@ -50,79 +51,68 @@ interface Aluno {
   status: string
 }
 
-interface CertificateTemplate {
-  id: string
-  name: string
-  description?: string
-}
-
 export default function EmitirCertificadoPage() {
   const router = useRouter()
-  const { user } = useAuth()
-
-  const [turmas, setTurmas] = useState<Turma[]>([])
-  const [templates, setTemplates] = useState<CertificateTemplate[]>([])
-  const [alunos, setAlunos] = useState<Aluno[]>([])
-
-  const [selectedTurma, setSelectedTurma] = useState<string>("")
-  const [selectedTemplate, setSelectedTemplate] = useState<string>("")
-  const [customFile, setCustomFile] = useState<File | null>(null)
-  const [selectedAlunos, setSelectedAlunos] = useState<Set<string>>(new Set())
-
-  const [alunosComCertificado, setAlunosComCertificado] = useState<Set<string>>(new Set())
-  const [loading, setLoading] = useState(true)
-  const [issuingCertificates, setIssuingCertificates] = useState(false)
-  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
-
+  const { user, isLoading: authLoading } = useAuth()
   const centroId = user?.centroId
 
+  // Estados
+  const [turmas, setTurmas] = useState<Turma[]>([])
+  const [alunos, setAlunos] = useState<Aluno[]>([])
+  const [selectedTurma, setSelectedTurma] = useState("")
+  const [selectedAlunos, setSelectedAlunos] = useState<Set<string>>(new Set())
+  const [alunosComCertificado, setAlunosComCertificado] = useState<Set<string>>(
+    new Set()
+  )
+  const [finalGrades, setFinalGrades] = useState<Map<string, number>>(new Map())
+  const [template, setTemplate] = useState<CertificateTemplate | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [issuingCertificates, setIssuingCertificates] = useState(false)
+  const [templateError, setTemplateError] = useState(false)
+
+  // Carregar turmas e template do centro
   useEffect(() => {
-    if (!user || !centroId) {
-      router.push("/login")
-      return
-    }
+    if (!centroId || authLoading) return
 
-    loadData()
-  }, [user, centroId, router])
+    async function loadInitialData() {
+      try {
+        // Carregar turmas
+        const { data: turmasData, error: turmasError } = await supabase
+          .from("turmas")
+          .select("id, name, formacao_id, centro_id, formacoes(name)")
+          .eq("centro_id", centroId)
 
-  const loadData = async () => {
-    try {
-      setLoading(true)
+        if (turmasError) throw turmasError
 
-      // Carregar turmas
-      const { data: turmasData, error: turmasError } = await supabase
-        .from("turmas")
-        .select("*, formacoes(name)")
-        .eq("centro_id", centroId)
-        .eq("status", "in_progress")
-
-      if (turmasError) throw turmasError
-
-      const mapped = turmasData.map((turma: any) => ({
-        id: turma.id,
-        name: turma.name,
-        formacao_name: turma.formacoes?.name || "",
-        formacao_id: turma.formacao_id,
-        centro_id: turma.centro_id,
-      }))
-
-      setTurmas(mapped)
-
-      // Carregar templates
-      const templates = await getCertificateTemplates(centroId || "")
-      setTemplates(
-        templates.map((t) => ({
-          id: t.id,
-          name: t.name,
-          description: t.description,
+        const mapped = turmasData.map((turma: any) => ({
+          id: turma.id,
+          name: turma.name,
+          formacao_name: turma.formacoes?.name || "",
+          formacao_id: turma.formacao_id,
+          centro_id: turma.centro_id,
         }))
-      )
-    } catch (error) {
-      console.error("Erro ao carregar dados:", error)
-    } finally {
-      setLoading(false)
+
+        setTurmas(mapped)
+
+        // Carregar o modelo ativo do centro
+        const templateData = await getCertificateTemplateForCenter(centroId || "")
+        if (templateData) {
+          setTemplate(templateData)
+          setTemplateError(false)
+        } else {
+          setTemplate(null)
+          setTemplateError(true)
+        }
+      } catch (error) {
+        console.error("Erro ao carregar dados:", error)
+        setTemplateError(true)
+      } finally {
+        setLoading(false)
+      }
     }
-  }
+
+    loadInitialData()
+  }, [centroId, authLoading])
 
   // Carregar alunos da turma selecionada
   useEffect(() => {
@@ -179,52 +169,44 @@ export default function EmitirCertificadoPage() {
     setSelectedAlunos(newSelected)
   }
 
+  // Atualizar nota final do aluno
+  function updateFinalGrade(alunoId: string, grade: number | null) {
+    const newGrades = new Map(finalGrades)
+    if (grade === null || grade === undefined || isNaN(grade)) {
+      newGrades.delete(alunoId)
+    } else {
+      newGrades.set(alunoId, grade)
+    }
+    setFinalGrades(newGrades)
+  }
+
   // Validação
-  const isValid =
-    selectedTurma &&
-    (selectedTemplate || customFile) &&
-    selectedAlunos.size > 0
+  const isValid = selectedTurma && selectedAlunos.size > 0 && template
+
+  // Verificar se todos os alunos selecionados têm nota
+  const allStudentsHaveGrades = Array.from(selectedAlunos).every(
+    (alunoId) => finalGrades.has(alunoId) && finalGrades.get(alunoId) !== null
+  )
 
   // Emitir certificados
   async function handleIssueCertificates() {
-    if (!isValid || !user || !centroId) return
+    if (!isValid || !user || !centroId || !template) return
+
+    // Validar se todos os alunos têm nota
+    if (!allStudentsHaveGrades) {
+      alert("Todos os alunos selecionados devem ter uma nota final antes de emitir certificados.")
+      return
+    }
 
     setIssuingCertificates(true)
     try {
-      let templateId = selectedTemplate
-
-      // Se arquivo customizado, criar um template temporário
-      if (customFile && !selectedTemplate) {
-        const fileName = `${Date.now()}-${customFile.name}`
-        const filePath = `${centroId}/templates/${fileName}`
-
-        // Upload do arquivo
-        const { error: uploadError } = await supabase.storage
-          .from("certificates")
-          .upload(filePath, customFile)
-
-        if (uploadError) throw uploadError
-
-        // Obter URL pública
-        const { data: publicUrlData } = supabase.storage
-          .from("certificates")
-          .getPublicUrl(filePath)
-
-        // Criar template
-        const { data: templateData, error: templateError } = await supabase
-          .from("certificate_templates")
-          .insert({
-            centro_id: centroId,
-            name: `Modelo Customizado - ${new Date().toLocaleDateString()}`,
-            pdf_url: publicUrlData.publicUrl,
-            file_path: filePath,
-            is_active: false,
-          })
-          .select()
-          .single()
-
-        if (templateError) throw templateError
-        templateId = templateData.id
+      // Obter o ID do usuário na tabela users (necessário para issued_by)
+      const userDatabaseId = await getUserDatabaseId(user.id)
+      
+      if (!userDatabaseId) {
+        alert("Erro: Usuário não encontrado no banco de dados. Verifique sua autenticação.")
+        setIssuingCertificates(false)
+        return
       }
 
       // Emitir certificados para cada aluno selecionado
@@ -233,8 +215,11 @@ export default function EmitirCertificadoPage() {
           centroId,
           alunoId,
           selectedTurma,
-          templateId,
-          user.id
+          template.id,
+          userDatabaseId,
+          {
+            finalGrade: finalGrades.get(alunoId),
+          }
         )
       )
 
@@ -251,7 +236,7 @@ export default function EmitirCertificadoPage() {
     }
   }
 
-  if (!user || loading) {
+  if (authLoading || loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-900">
         <Spinner />
@@ -266,77 +251,42 @@ export default function EmitirCertificadoPage() {
       <div className="flex-1 overflow-auto bg-slate-900 pt-16 md:pt-0">
         <div className="w-full max-w-7xl mx-auto py-6 md:py-8 px-4 md:px-6 space-y-6">
           {/* Cabeçalho */}
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <Link href="/dashboard/certificados">
-                <Button variant="ghost" className="text-blue-300 hover:bg-blue-900">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Voltar
-                </Button>
-              </Link>
-              <div>
-                <h1 className="text-2xl md:text-3xl font-bold text-white">Emitir Certificado</h1>
-                <p className="text-blue-200">Emita certificados para os alunos de uma turma</p>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <Link href="/super-admin/certificados/templates">
-                <Button className="bg-blue-900 hover:bg-blue-800 text-white border border-blue-700 gap-2">
-                  <Settings className="h-4 w-4" />
-                  Modelos
-                </Button>
-              </Link>
-              <Dialog open={isUploadModalOpen} onOpenChange={setIsUploadModalOpen}>
-                <DialogTrigger asChild>
-                  <Button className="bg-blue-900 hover:bg-blue-800 text-white border border-blue-700 gap-2">
-                    <Upload className="h-4 w-4" />
-                    Upload
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="bg-slate-800 border-blue-800 text-white">
-                  <DialogHeader>
-                    <DialogTitle className="text-white">Carregar Modelo Customizado</DialogTitle>
-                    <DialogDescription className="text-blue-300">
-                      Faça upload de um arquivo PDF que será usado como modelo de certificado
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="upload-file" className="text-white">Arquivo PDF</Label>
-                      <div className="border-2 border-dashed border-blue-800 rounded-lg p-6 text-center mt-2 bg-blue-900/20">
-                        <Upload className="h-8 w-8 text-blue-300 mx-auto mb-2" />
-                        <input
-                          id="upload-file"
-                          type="file"
-                          accept=".pdf"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0]
-                            if (file) {
-                              setCustomFile(file)
-                              setSelectedTemplate("")
-                              setIsUploadModalOpen(false)
-                            }
-                          }}
-                          className="hidden"
-                        />
-                        <label
-                          htmlFor="upload-file"
-                          className="cursor-pointer block"
-                        >
-                          <p className="text-sm font-medium text-white">
-                            Clique para escolher arquivo
-                          </p>
-                          <p className="text-xs text-blue-300 mt-1">
-                            Apenas arquivos PDF são aceitos
-                          </p>
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
+          <div className="flex items-center gap-4">
+            <Link href="/dashboard/certificados">
+              <Button
+                variant="ghost"
+                className="text-blue-300 hover:bg-blue-900"
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Voltar
+              </Button>
+            </Link>
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-white">
+                Emitir Certificado
+              </h1>
+              <p className="text-blue-200">
+                Emita certificados para os alunos de uma turma
+              </p>
             </div>
           </div>
+
+          {/* Alerta se não houver modelo */}
+          {templateError && (
+            <Alert className="bg-red-900/30 border-red-800">
+              <AlertTriangle className="h-4 w-4 text-red-400" />
+              <AlertDescription className="text-red-300 ml-2">
+                Nenhum modelo de certificado carregado. Por favor,{" "}
+                <Link
+                  href="/dashboard/certificados/modelo"
+                  className="underline font-semibold hover:text-red-200"
+                >
+                  carregue um modelo
+                </Link>{" "}
+                antes de emitir certificados.
+              </AlertDescription>
+            </Alert>
+          )}
 
           <div className="grid gap-6 lg:grid-cols-3">
             {/* Formulário */}
@@ -362,69 +312,22 @@ export default function EmitirCertificadoPage() {
                 </CardContent>
               </Card>
 
-              {/* Selecionar Modelo - Apenas aparece após clicar em Upload */}
-              {isUploadModalOpen && selectedTurma && (
-                <Card className="bg-blue-900/30 border-blue-800">
+              {/* Informação do Modelo */}
+              {template && (
+                <Card className="bg-green-900/30 border-green-800">
                   <CardHeader>
-                    <CardTitle className="text-white">2. Escolha o Modelo</CardTitle>
-                    <CardDescription className="text-blue-300">
-                      Use um modelo existente ou faça upload de um customizado
-                    </CardDescription>
+                    <CardTitle className="text-green-300 flex items-center gap-2">
+                      <Check className="h-5 w-5" />
+                      Modelo de Certificado Carregado
+                    </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-6">
-                    {templates.length > 0 && (
-                      <div>
-                        <Label className="text-white mb-3 block">Modelos Disponíveis</Label>
-                        <Select
-                          value={selectedTemplate}
-                          onValueChange={setSelectedTemplate}
-                          disabled={!!customFile}
-                        >
-                          <SelectTrigger className="bg-blue-900/50 border-blue-700 text-white">
-                            <SelectValue placeholder="Escolha um modelo..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {templates.map((template) => (
-                              <SelectItem key={template.id} value={template.id}>
-                                {template.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+                  <CardContent>
+                    <p className="text-white font-semibold">{template.name}</p>
+                    {template.description && (
+                      <p className="text-green-200 text-sm mt-1">
+                        {template.description}
+                      </p>
                     )}
-
-                    <div className="border-t border-blue-700 pt-4">
-                      <Label className="text-white mb-3 block">Ou Carregar Modelo Customizado</Label>
-                      <div className="border-2 border-dashed border-blue-700 rounded-lg p-8 text-center hover:border-orange-500 transition-colors">
-                        <Upload className="h-12 w-12 text-blue-400 mx-auto mb-3" />
-                        <input
-                          type="file"
-                          accept=".pdf"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0]
-                            if (file) {
-                              setCustomFile(file)
-                              setSelectedTemplate("")
-                            }
-                          }}
-                          className="hidden"
-                          id="file-upload"
-                          disabled={!!selectedTemplate}
-                        />
-                        <label htmlFor="file-upload" className="cursor-pointer block">
-                          <p className="text-sm text-blue-200">
-                            Clique para escolher um arquivo PDF
-                          </p>
-                          <p className="text-xs text-blue-400 mt-1">ou arraste e solte aqui</p>
-                        </label>
-                        {customFile && (
-                          <p className="text-sm font-medium text-green-400 mt-2">
-                            ✓ {customFile.name}
-                          </p>
-                        )}
-                      </div>
-                    </div>
                   </CardContent>
                 </Card>
               )}
@@ -433,7 +336,7 @@ export default function EmitirCertificadoPage() {
               {selectedTurma && alunos.length > 0 && (
                 <Card className="bg-blue-900/30 border-blue-800">
                   <CardHeader>
-                    <CardTitle className="text-white">3. Selecione os Alunos</CardTitle>
+                    <CardTitle className="text-white">2. Selecione os Alunos</CardTitle>
                     <CardDescription className="text-blue-300">
                       {selectedAlunos.size} aluno(s) selecionado(s)
                     </CardDescription>
@@ -442,32 +345,64 @@ export default function EmitirCertificadoPage() {
                     <div className="space-y-3 max-h-96 overflow-y-auto">
                       {alunos.map((aluno) => {
                         const temCertificado = alunosComCertificado.has(aluno.id)
+                        const isSelected = selectedAlunos.has(aluno.id)
+                        const finalGrade = finalGrades.get(aluno.id)
                         return (
                           <div
                             key={aluno.id}
-                            className="flex items-center gap-3 p-3 border border-blue-700 rounded-lg hover:bg-blue-800/30"
+                            className="flex items-center justify-between gap-3 p-3 border border-blue-700 rounded-lg hover:bg-blue-800/30"
                           >
-                            <Checkbox
-                              id={aluno.id}
-                              checked={selectedAlunos.has(aluno.id)}
-                              onCheckedChange={() => toggleAluno(aluno.id)}
-                              disabled={temCertificado}
-                            />
-                            <div className="flex-1 min-w-0">
-                              <label
-                                htmlFor={aluno.id}
-                                className="text-sm font-medium text-white cursor-pointer"
-                              >
-                                {aluno.name}
-                              </label>
-                              <p className="text-xs text-blue-300">{aluno.email}</p>
-                            </div>
-                            {temCertificado && (
-                              <div className="flex items-center gap-1 text-green-400 text-sm">
-                                <Check className="h-4 w-4" />
-                                <span>Certificado</span>
+                            {/* Lado esquerdo: Checkbox + Dados do aluno */}
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                              <Checkbox
+                                id={aluno.id}
+                                checked={isSelected}
+                                onCheckedChange={() => toggleAluno(aluno.id)}
+                                disabled={temCertificado}
+                              />
+                              <div className="flex-1 min-w-0">
+                                <label
+                                  htmlFor={aluno.id}
+                                  className="text-sm font-medium text-white cursor-pointer"
+                                >
+                                  {aluno.name}
+                                </label>
+                                <p className="text-xs text-blue-300">{aluno.email}</p>
                               </div>
-                            )}
+                            </div>
+
+                            {/* Lado direito: Nota Final ou Status */}
+                            <div className="flex items-center gap-2 ml-2">
+                              {isSelected && !temCertificado && (
+                                <div className="flex items-center gap-2">
+                                  <label className="text-xs font-medium text-blue-300 whitespace-nowrap">
+                                    Nota:
+                                  </label>
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    max="20"
+                                    step="0.01"
+                                    placeholder="ex: 17.5"
+                                    value={finalGrade || ""}
+                                    onChange={(e) =>
+                                      updateFinalGrade(
+                                        aluno.id,
+                                        e.target.value ? parseFloat(e.target.value) : null
+                                      )
+                                    }
+                                    className="w-22 bg-blue-900/50 border-blue-600 text-white placeholder:text-blue-400 text-sm text-center"
+                                  />
+                                </div>
+                              )}
+                              
+                              {temCertificado && (
+                                <div className="flex items-center gap-1 text-green-400 text-sm whitespace-nowrap">
+                                  <Check className="h-4 w-4" />
+                                  <span>Certificado</span>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         )
                       })}
@@ -478,7 +413,7 @@ export default function EmitirCertificadoPage() {
             </div>
 
             {/* Resumo */}
-            {selectedTurma && (selectedTemplate || customFile) && (
+            {selectedTurma && (
               <div>
                 <Card className="sticky top-6 bg-blue-900/30 border-blue-800">
                   <CardHeader>
@@ -495,32 +430,39 @@ export default function EmitirCertificadoPage() {
                     <div className="border-t border-blue-700 pt-4">
                       <p className="text-sm text-blue-300">Modelo</p>
                       <p className="font-semibold text-white text-sm">
-                        {selectedTemplate
-                          ? templates.find((t) => t.id === selectedTemplate)?.name
-                          : customFile
-                            ? customFile.name
-                            : "—"}
+                        {template?.name || "—"}
                       </p>
                     </div>
 
                     <div className="border-t border-blue-700 pt-4">
                       <p className="text-sm text-blue-300">Alunos Selecionados</p>
-                      <p className="text-2xl font-bold text-white">{selectedAlunos.size}</p>
+                      <p className="text-2xl font-bold text-white">
+                        {selectedAlunos.size}
+                      </p>
                     </div>
 
                     {selectedAlunos.size > 0 && alunosComCertificado.size > 0 && (
                       <div className="bg-amber-900/30 border border-amber-700 rounded-lg p-3">
                         <p className="text-sm text-amber-300">
-                          <strong>{alunosComCertificado.size}</strong> aluno(s) já possuem certificado
-                          desta turma
+                          <strong>{alunosComCertificado.size}</strong> aluno(s) já
+                          possuem certificado desta turma
+                        </p>
+                      </div>
+                    )}
+
+                    {selectedAlunos.size > 0 && !allStudentsHaveGrades && (
+                      <div className="bg-red-900/30 border border-red-700 rounded-lg p-3">
+                        <p className="text-sm text-red-300">
+                          <AlertTriangle className="h-4 w-4 inline mr-1" />
+                          Todos os alunos selecionados precisam de uma nota final
                         </p>
                       </div>
                     )}
 
                     <Button
                       onClick={handleIssueCertificates}
-                      disabled={!isValid || issuingCertificates}
-                      className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold"
+                      disabled={!isValid || issuingCertificates || !allStudentsHaveGrades}
+                      className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                       size="lg"
                     >
                       {issuingCertificates ? (

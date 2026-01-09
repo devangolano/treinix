@@ -38,6 +38,7 @@ CREATE TABLE certificates (
   pdf_url TEXT, -- URL do certificado gerado
   file_path VARCHAR(500), -- Caminho do arquivo no storage
   issue_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  final_grade DECIMAL(5,2), -- Nota final do aluno
   status VARCHAR(20) NOT NULL DEFAULT 'issued' CHECK (status IN ('issued', 'revoked', 'expired')),
   issued_by UUID REFERENCES users(id) ON DELETE SET NULL,
   revoked_at TIMESTAMP WITH TIME ZONE,
@@ -56,6 +57,7 @@ CREATE INDEX idx_certificates_template_id ON certificates(template_id);
 CREATE INDEX idx_certificates_status ON certificates(status);
 CREATE INDEX idx_certificates_issue_date ON certificates(issue_date);
 CREATE INDEX idx_certificates_certificate_number ON certificates(certificate_number);
+CREATE INDEX idx_certificates_final_grade ON certificates(final_grade);
 
 -- ============================================
 -- TABELA: certificate_logs
@@ -99,49 +101,22 @@ ALTER TABLE certificate_logs ENABLE ROW LEVEL SECURITY;
 -- POLÍTICAS RLS: certificate_templates
 -- ============================================
 
--- Super Admin: acesso total
-CREATE POLICY "Super admin tem acesso total aos modelos de certificados" ON certificate_templates
-  FOR ALL
-  USING (get_user_role(auth.jwt() ->> 'email') = 'super_admin');
-
--- Centro: gerenciar seus modelos
-CREATE POLICY "Centro gerencia seus modelos de certificados" ON certificate_templates
-  FOR ALL
-  USING (centro_id = get_user_centro_id(auth.jwt() ->> 'email'));
+-- Políticas RLS comentadas - implementar via aplicação ou funções custom
+-- Controle de acesso baseado em auth.uid() será feito na aplicação
 
 -- ============================================
 -- POLÍTICAS RLS: certificates
 -- ============================================
 
--- Super Admin: acesso total
-CREATE POLICY "Super admin tem acesso total aos certificados" ON certificates
-  FOR ALL
-  USING (get_user_role(auth.jwt() ->> 'email') = 'super_admin');
-
--- Centro: gerenciar seus certificados
-CREATE POLICY "Centro gerencia seus certificados" ON certificates
-  FOR ALL
-  USING (centro_id = get_user_centro_id(auth.jwt() ->> 'email'));
+-- Políticas RLS comentadas - implementar via aplicação ou funções custom
+-- Controle de acesso baseado em auth.uid() será feito na aplicação
 
 -- ============================================
 -- POLÍTICAS RLS: certificate_logs
 -- ============================================
 
--- Super Admin: acesso total
-CREATE POLICY "Super admin vê todos os logs de certificados" ON certificate_logs
-  FOR SELECT
-  USING (get_user_role(auth.jwt() ->> 'email') = 'super_admin');
-
--- Centro: vê logs dos seus certificados
-CREATE POLICY "Centro vê logs dos seus certificados" ON certificate_logs
-  FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM certificates 
-      WHERE certificates.id = certificate_logs.certificate_id
-      AND certificates.centro_id = get_user_centro_id(auth.jwt() ->> 'email')
-    )
-  );
+-- Políticas RLS comentadas - implementar via aplicação ou funções custom
+-- Controle de acesso baseado em auth.uid() será feito na aplicação
 
 -- ============================================
 -- VIEWS ÚTEIS
@@ -168,6 +143,7 @@ GROUP BY t.id, t.name, f.name, c.name, t.centro_id;
 CREATE OR REPLACE VIEW certificates_detailed AS
 SELECT 
   cert.id,
+  cert.centro_id,
   cert.certificate_number,
   a.name as aluno_name,
   a.email as aluno_email,
@@ -176,6 +152,7 @@ SELECT
   c.name as centro_name,
   ct.name as template_name,
   cert.issue_date,
+  cert.final_grade,
   cert.status,
   u.name as issued_by_name,
   cert.created_at,

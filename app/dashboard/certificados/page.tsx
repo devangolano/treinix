@@ -14,7 +14,22 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Plus, FileText, Loader2, Award } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Plus, FileText, Loader2, Award, Download, Filter } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 import { supabase } from "@/lib/supabase"
 import { CentroSidebar } from "@/components/centro-sidebar"
@@ -27,25 +42,23 @@ interface CertificateWithDetails {
   formacao_name: string
   certificate_number: string
   issue_date: string
+  final_grade: number
   status: string
   pdf_url?: string
-}
-
-interface TurmaSummary {
-  turma_id: string
-  turma_name: string
-  formacao_name: string
-  total_alunos: number
-  certificados_emitidos: number
-  alunos_sem_certificado: number
 }
 
 export default function CertificadosPage() {
   const router = useRouter()
   const { user } = useAuth()
   const [certificates, setCertificates] = useState<CertificateWithDetails[]>([])
-  const [turmasSummary, setTurmasSummary] = useState<TurmaSummary[]>([])
+  const [filteredCertificates, setFilteredCertificates] = useState<CertificateWithDetails[]>([])
   const [loading, setLoading] = useState(true)
+  const [turmas, setTurmas] = useState<string[]>([])
+  
+  // Estados de filtro
+  const [filterName, setFilterName] = useState("")
+  const [filterTurma, setFilterTurma] = useState("")
+  const [filterDate, setFilterDate] = useState("")
 
   useEffect(() => {
     if (!user || !user.centroId) {
@@ -55,6 +68,35 @@ export default function CertificadosPage() {
 
     loadData()
   }, [user, router])
+
+  // Aplicar filtros
+  useEffect(() => {
+    let filtered = certificates
+
+    // Filtrar por nome do aluno
+    if (filterName) {
+      filtered = filtered.filter((cert) =>
+        cert.aluno_name.toLowerCase().includes(filterName.toLowerCase())
+      )
+    }
+
+    // Filtrar por turma
+    if (filterTurma) {
+      filtered = filtered.filter((cert) =>
+        cert.turma_name.toLowerCase().includes(filterTurma.toLowerCase())
+      )
+    }
+
+    // Filtrar por data
+    if (filterDate) {
+      filtered = filtered.filter((cert) => {
+        const certDate = new Date(cert.issue_date).toLocaleDateString("pt-AO")
+        return certDate.includes(filterDate)
+      })
+    }
+
+    setFilteredCertificates(filtered)
+  }, [certificates, filterName, filterTurma, filterDate])
 
   const loadData = async () => {
     try {
@@ -69,15 +111,13 @@ export default function CertificadosPage() {
 
       if (certsError) throw certsError
       setCertificates(certsData || [])
-
-      // Carregar resumo por turma
-      const { data: turmasData, error: turmasError } = await supabase
-        .from("certificates_summary_by_turma")
-        .select("*")
-        .order("turma_name")
-
-      if (turmasError) throw turmasError
-      setTurmasSummary(turmasData || [])
+      setFilteredCertificates(certsData || [])
+      
+      // Extrair turmas únicas
+      const uniqueTurmas = Array.from(
+        new Set((certsData || []).map((cert) => cert.turma_name))
+      ).sort()
+      setTurmas(uniqueTurmas)
     } catch (error) {
       console.error("Erro ao carregar dados:", error)
     } finally {
@@ -113,74 +153,95 @@ export default function CertificadosPage() {
             </Link>
           </div>
 
-          {/* Resumo por Turma */}
-          {turmasSummary.length > 0 && (
-            <div>
-              <h2 className="text-lg font-semibold text-white mb-4">Resumo por Turma</h2>
-              {turmasSummary.length === 0 ? (
-                <Card className="bg-blue-900/30 border-blue-800">
-                  <CardContent className="py-12 text-center">
-                    <Award className="h-12 w-12 text-blue-400 mx-auto mb-3" />
-                    <p className="text-blue-300">Nenhuma turma com certificados</p>
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="grid gap-4 md:grid-cols-2">
-                  {turmasSummary.map((turma) => (
-                    <Card
-                      key={turma.turma_id}
-                      className="bg-blue-900/30 border-blue-800 hover:border-orange-500 transition-colors"
-                    >
-                      <CardContent className="pt-6">
-                        <div className="space-y-4">
-                          <div>
-                            <p className="text-sm text-blue-300">Turma</p>
-                            <p className="text-lg font-semibold text-white">{turma.turma_name}</p>
-                            <p className="text-sm text-blue-200">{turma.formacao_name}</p>
-                          </div>
-
-                          <div className="grid grid-cols-3 gap-4 pt-4 border-t border-blue-700">
-                            <div>
-                              <p className="text-sm text-blue-300">Total Alunos</p>
-                              <p className="text-2xl font-bold text-white">
-                                {turma.total_alunos}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-sm text-blue-300">Certificados</p>
-                              <p className="text-2xl font-bold text-green-400">
-                                {turma.certificados_emitidos}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-sm text-blue-300">Pendentes</p>
-                              <p className="text-2xl font-bold text-amber-400">
-                                {turma.alunos_sem_certificado}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
           {/* Lista de Certificados */}
           <Card className="bg-blue-900/30 border-blue-800">
             <CardHeader className="border-b border-blue-800">
-              <CardTitle className="text-white">Certificados Emitidos</CardTitle>
-              <CardDescription className="text-blue-300">
-                Histórico de todos os certificados emitidos
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-white">Certificados Emitidos</CardTitle>
+                  <CardDescription className="text-blue-300">
+                    Total: {filteredCertificates.length} certificado(s)
+                  </CardDescription>
+                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button className="bg-blue-700 hover:bg-blue-600 text-white gap-2">
+                      <Filter className="h-4 w-4" />
+                      Filtrar
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-64">
+                    <DropdownMenuLabel>Filtrar por</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    
+                    <div className="p-4 space-y-4">
+                      <div>
+                        <label className="text-sm font-medium text-white mb-2 block">
+                          Nome do Aluno
+                        </label>
+                        <Input
+                          placeholder="Ex: João Silva"
+                          value={filterName}
+                          onChange={(e) => setFilterName(e.target.value)}
+                          className="bg-blue-900/50 border-blue-700 text-white placeholder:text-blue-400"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium text-white mb-2 block">
+                          Turma
+                        </label>
+                        <Select value={filterTurma} onValueChange={setFilterTurma}>
+                          <SelectTrigger className="bg-blue-900/50 border-blue-700 text-white">
+                            <SelectValue placeholder="Selecione uma turma" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {turmas.map((turma) => (
+                              <SelectItem key={turma} value={turma}>
+                                {turma}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium text-white mb-2 block">
+                          Data (DD/MM/YYYY)
+                        </label>
+                        <Input
+                          placeholder="Ex: 29/12/2025"
+                          value={filterDate}
+                          onChange={(e) => setFilterDate(e.target.value)}
+                          className="bg-blue-900/50 border-blue-700 text-white placeholder:text-blue-400"
+                        />
+                      </div>
+
+                      <Button
+                        onClick={() => {
+                          setFilterName("")
+                          setFilterTurma("")
+                          setFilterDate("")
+                        }}
+                        variant="outline"
+                        className="w-full text-white border-blue-600 hover:bg-blue-900/30"
+                      >
+                        Limpar Filtros
+                      </Button>
+                    </div>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </CardHeader>
             <CardContent className="pt-6">
-              {certificates.length === 0 ? (
+              {filteredCertificates.length === 0 ? (
                 <div className="text-center py-12">
                   <FileText className="h-12 w-12 text-blue-400 mx-auto mb-3" />
-                  <p className="text-blue-300">Nenhum certificado emitido ainda</p>
+                  <p className="text-blue-300">
+                    {certificates.length === 0
+                      ? "Nenhum certificado emitido ainda"
+                      : "Nenhum certificado encontrado com os filtros aplicados"}
+                  </p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -192,12 +253,13 @@ export default function CertificadosPage() {
                         <TableHead className="text-blue-200">Turma</TableHead>
                         <TableHead className="text-blue-200">Formação</TableHead>
                         <TableHead className="text-blue-200">Data Emissão</TableHead>
+                        <TableHead className="text-blue-200">Nota Final</TableHead>
                         <TableHead className="text-blue-200">Status</TableHead>
                         <TableHead className="text-blue-200">Ações</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {certificates.map((cert) => (
+                      {filteredCertificates.map((cert) => (
                         <TableRow
                           key={cert.id}
                           className="border-blue-700 hover:bg-blue-800/30"
@@ -210,6 +272,13 @@ export default function CertificadosPage() {
                           <TableCell className="text-blue-100">{cert.formacao_name}</TableCell>
                           <TableCell className="text-blue-100">
                             {new Date(cert.issue_date).toLocaleDateString("pt-AO")}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center justify-center">
+                              <div className="bg-green-500/20 text-green-400 px-3 py-1 rounded-md text-sm font-semibold">
+                                {cert.final_grade.toFixed(2)}
+                              </div>
+                            </div>
                           </TableCell>
                           <TableCell>
                             <Badge
@@ -226,12 +295,16 @@ export default function CertificadosPage() {
                                 href={cert.pdf_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-orange-400 hover:text-orange-300 text-sm font-medium"
+                                download={`${cert.certificate_number}.pdf`}
+                                className="inline-flex items-center justify-center gap-1 p-2 rounded-md bg-orange-500/20 hover:bg-orange-500/40 text-orange-400 hover:text-orange-200 transition-all hover:scale-110"
+                                title="Baixar certificado"
                               >
-                                Ver PDF
+                                <Download className="h-5 w-5" />
                               </a>
                             ) : (
-                              <span className="text-blue-400 text-sm">—</span>
+                              <span className="inline-flex items-center justify-center p-2 text-blue-500">
+                                <Download className="h-5 w-5 opacity-30" />
+                              </span>
                             )}
                           </TableCell>
                         </TableRow>
