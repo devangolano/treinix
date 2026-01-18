@@ -10,22 +10,22 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import {
   Plus,
   Pencil,
   Trash2,
-  Phone,
-  GraduationCap,
   Search,
   Filter,
   Eye,
-  Mail,
   FileText,
+  GraduationCap,
+  MoreVertical,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { generateAlunoPDF } from "@/lib/pdf-generator"
 import type { Aluno, Formacao, Turma, Pagamento, Centro } from "@/lib/types"
-import { Separator } from "@/components/ui/separator"
 import { Spinner } from "@/components/ui/spinner"
 import Link from "next/link"
 
@@ -352,98 +352,179 @@ export default function AlunosPage() {
             </CardContent>
           </Card>
 
-          <div className="space-y-2">
-            {filteredAlunos.length === 0 ? (
-              <Card className="bg-blue-900/30 border-blue-800">
-                <CardContent className="py-12 text-center">
-                  <p className="text-blue-300">
+          <Card className="bg-blue-900/30 border-blue-800">
+            <CardContent className="pt-6">
+              {/* Exibição Desktop - Tabela */}
+              <div className="hidden md:block rounded-lg border border-blue-800 overflow-hidden">
+                <Table>
+                  <TableHeader className="bg-blue-800/50">
+                    <TableRow className="hover:bg-blue-800/50 border-blue-700">
+                      <TableHead className="text-blue-100 font-semibold">Nome</TableHead>
+                      <TableHead className="text-blue-100 font-semibold">Email</TableHead>
+                      <TableHead className="text-blue-100 font-semibold">Telefone</TableHead>
+                      <TableHead className="text-blue-100 font-semibold">BI</TableHead>
+                      <TableHead className="text-blue-100 font-semibold">Formação</TableHead>
+                      <TableHead className="text-blue-100 font-semibold">Status</TableHead>
+                      <TableHead className="text-blue-100 font-semibold">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredAlunos.length === 0 ? (
+                      <TableRow className="border-blue-700 hover:bg-blue-900/20">
+                        <TableCell colSpan={7} className="text-center text-blue-300 py-8">
+                          {alunos.length === 0
+                            ? "Nenhum aluno cadastrado"
+                            : "Nenhum aluno encontrado com os filtros aplicados"}
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredAlunos.map((aluno) => (
+                        <TableRow key={aluno.id} className="border-blue-700 hover:bg-blue-900/30 transition-colors">
+                          <TableCell className="text-white font-medium">{aluno.name}</TableCell>
+                          <TableCell className="text-blue-200">{aluno.email}</TableCell>
+                          <TableCell className="text-blue-200">{aluno.phone}</TableCell>
+                          <TableCell className="text-blue-200">{aluno.bi}</TableCell>
+                          <TableCell className="text-blue-200">{getFormacaoName(aluno.formacaoId)}</TableCell>
+                          <TableCell>
+                            <Badge 
+                              variant={aluno.status === "active" ? "default" : "secondary"} 
+                              className="bg-orange-500 text-white border-orange-600"
+                            >
+                              {aluno.status === "active" ? "Ativo" : "Inativo"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-blue-200 hover:text-white hover:bg-blue-800">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="bg-blue-900 border-blue-800">
+                                <DropdownMenuItem asChild className="hover:bg-blue-800">
+                                  <Link href={`/dashboard/alunos/${aluno.id}`} className="flex items-center cursor-pointer text-blue-100">
+                                    <Eye className="h-4 w-4 mr-2" />
+                                    Ver
+                                  </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => handleDownloadFicha(aluno)}
+                                  className="hover:bg-blue-800 text-blue-100 cursor-pointer"
+                                >
+                                  <FileText className="h-4 w-4 mr-2" />
+                                  Baixar PDF
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild className="hover:bg-blue-800">
+                                  <Link href={`/dashboard/alunos/${aluno.id}/editar`} className="flex items-center cursor-pointer text-blue-100">
+                                    <Pencil className="h-4 w-4 mr-2" />
+                                    Editar
+                                  </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => handleDelete(aluno.id)}
+                                  className="hover:bg-red-900/30 text-red-400 cursor-pointer"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Deletar
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Exibição Mobile - Cards */}
+              <div className="md:hidden space-y-3">
+                {filteredAlunos.length === 0 ? (
+                  <div className="text-center text-blue-300 py-8">
                     {alunos.length === 0
                       ? "Nenhum aluno cadastrado"
                       : "Nenhum aluno encontrado com os filtros aplicados"}
-                  </p>
-                </CardContent>
-              </Card>
-            ) : (
-              filteredAlunos.map((aluno) => {
-                const paymentStatus = getPaymentStatus(aluno.id)
-                const paymentInfo = paymentStatus
-                  ? {
-                      pagamento: {
-                        status: paymentStatus.status,
-                        amount: paymentStatus.amount,
-                        installments: paymentStatus.installments,
-                        installmentsPaid: getStats(paymentStatus.id).paidCount,
-                        paymentMethod: "cash",
-                        id: paymentStatus.id,
-                      },
-                      totalPaid:
-                        (paymentStatus.amount / paymentStatus.installments) * getStats(paymentStatus.id).paidCount,
-                      totalRemaining:
-                        paymentStatus.amount -
-                        (paymentStatus.amount / paymentStatus.installments) * getStats(paymentStatus.id).paidCount,
-                    }
-                  : null
-
-                return (
-                  <Card key={aluno.id} className="hover:shadow-md transition-shadow bg-blue-900/30 border-blue-800 hover:border-orange-500">
-                    <CardContent className="pt-6">
-                      <div className="flex items-start justify-between gap-3 mb-4">
-                        <div className="space-y-2 flex-1">
-                          <p className="font-semibold text-lg text-white">{aluno.name}</p>
-                          <div className="flex items-center gap-3 text-sm text-blue-300">
-                            <Phone className="h-4 w-4" />
-                            <span>{aluno.phone}</span>
-                          {aluno.formacaoId && (
-                            <div className="flex items-center gap-3 text-sm text-blue-300">
-                              <GraduationCap className="h-4 w-4" />
-                              <span>{getFormacaoName(aluno.formacaoId)}</span>
+                  </div>
+                ) : (
+                  filteredAlunos.map((aluno) => (
+                    <Card key={aluno.id} className="bg-blue-800/40 border-blue-700 hover:border-orange-500 transition-colors">
+                      <CardContent className="pt-4 pb-4">
+                        <div className="space-y-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-white truncate">{aluno.name}</p>
+                              <p className="text-sm text-blue-200 truncate">{aluno.email}</p>
                             </div>
-                          )}
-                          <div className="flex items-center gap-3 text-sm text-blue-300">
-                          <Mail className="h-4 w-4" />
-                          <p>{aluno.email}</p>
+                            <Badge 
+                              variant={aluno.status === "active" ? "default" : "secondary"} 
+                              className="bg-orange-500 text-white border-orange-600 shrink-0"
+                            >
+                              {aluno.status === "active" ? "Ativo" : "Inativo"}
+                            </Badge>
+                          </div>
+
+                          <div className="flex gap-4 text-sm text-blue-300 border-t border-blue-700 pt-2">
+                            <div>
+                              <p className="text-xs text-blue-400">Telefone</p>
+                              <p className="text-blue-200">{aluno.phone}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-blue-400">BI</p>
+                              <p className="text-blue-200">{aluno.bi}</p>
                             </div>
                           </div>
+
+                          <div>
+                            <p className="text-xs text-blue-400">Formação</p>
+                            <p className="text-blue-200">{getFormacaoName(aluno.formacaoId)}</p>
+                          </div>
+
+                          <div className="flex gap-2 border-t border-blue-700 pt-3">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="flex-1 h-9 text-blue-200 hover:text-white hover:bg-blue-700">
+                                  <MoreVertical className="h-4 w-4 mr-1" />
+                                  Menu
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="bg-blue-900 border-blue-800">
+                                <DropdownMenuItem asChild className="hover:bg-blue-800">
+                                  <Link href={`/dashboard/alunos/${aluno.id}`} className="flex items-center cursor-pointer text-blue-100">
+                                    <Eye className="h-4 w-4 mr-2" />
+                                    Ver
+                                  </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => handleDownloadFicha(aluno)}
+                                  className="hover:bg-blue-800 text-blue-100 cursor-pointer"
+                                >
+                                  <FileText className="h-4 w-4 mr-2" />
+                                  PDF
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild className="hover:bg-blue-800">
+                                  <Link href={`/dashboard/alunos/${aluno.id}/editar`} className="flex items-center cursor-pointer text-blue-100">
+                                    <Pencil className="h-4 w-4 mr-2" />
+                                    Editar
+                                  </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => handleDelete(aluno.id)}
+                                  className="hover:bg-red-900/30 text-red-400 cursor-pointer"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Deletar
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
                         </div>
-                        <Badge variant={aluno.status === "active" ? "default" : "secondary"} className="h-fit shrink-0 bg-orange-500 text-white border-orange-600">
-                          {aluno.status === "active" ? "Ativo" : "Inativo"}
-                        </Badge>
-                      </div>
-
-                      <Separator className="my-4 bg-blue-700" />
-
-                      <div className="flex gap-2 flex-wrap">
-                        <Link href={`/dashboard/alunos/${aluno.id}`} className="flex-1 min-w-fit">
-                          <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700 text-white">
-                            <Eye className="h-3 w-3 mr-2" />
-                            Ver
-                          </Button>
-                        </Link>
-                        <Button 
-                          size="sm" 
-                          onClick={() => handleDownloadFicha(aluno)}
-                          className="flex-1 min-w-fit bg-green-600 hover:bg-green-700 text-white"
-                        >
-                          <FileText className="h-3 w-3 mr-2" />
-                          Ficha
-                        </Button>
-                        <Link href={`/dashboard/alunos/${aluno.id}/editar`} className="flex-1 min-w-fit">
-                          <Button size="sm" variant="outline" className="w-full border-blue-700 text-blue-200 hover:bg-orange-500 hover:text-white hover:border-orange-500">
-                            <Pencil className="h-3 w-3 mr-2" />
-                            Editar
-                          </Button>
-                        </Link>
-                        <Button size="sm" variant="destructive" onClick={() => handleDelete(aluno.id)} className="bg-red-600 hover:bg-red-700">
-                          <Trash2 className="h-3 w-3 mr-2" />
-                          Deletar
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )
-              })
-            )}
-          </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

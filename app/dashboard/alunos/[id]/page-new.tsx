@@ -63,7 +63,6 @@ export default function DetalhesAlunoPage() {
 
       setAluno(alunoData)
 
-      // Carregar dados do centro
       const centroData = await centroService.getById(centroId)
       setCentro(centroData || null)
 
@@ -81,11 +80,9 @@ export default function DetalhesAlunoPage() {
       const filtered = pagamentosData.filter((p) => p.alunoId === alunoId)
       setPagamentos(filtered)
 
-      // Buscar todos os alunos para mostrar quantos estão na mesma turma
       const alunosData = await alunoService.getAll(centroId)
       setAlunos(alunosData)
 
-      // Calcular stats de prestações para cada pagamento
       const stats: Record<string, { paidCount: number; totalCount: number; percentage: number }> = {}
       for (const pagamento of filtered) {
         try {
@@ -129,10 +126,8 @@ export default function DetalhesAlunoPage() {
         return
       }
 
-      // Obter dados de pagamento
       const pagamento = pagamentos.length > 0 ? pagamentos[0] : null
 
-      // Converter status de pagamento
       let paymentStatus: "paid" | "half-paid" | "pending" = "pending"
       if (pagamento) {
         if (pagamento.status === "completed") {
@@ -142,7 +137,6 @@ export default function DetalhesAlunoPage() {
         }
       }
 
-      // Converter método de pagamento para formato legível
       const paymentMethodMap: Record<string, string> = {
         cash: "Dinheiro",
         transfer: "Transferência Bancária",
@@ -217,29 +211,38 @@ export default function DetalhesAlunoPage() {
             <CardContent className="pt-6">
               {/* Seção: Informações Pessoais (com Nome e Status) */}
               <div>
-                <div className="flex items-center gap-2 mb-4">
+                <div className="flex items-center gap-2 mb-6">
                   <IdCard className="h-5 w-5 text-orange-400" />
                   <h2 className="text-xl font-bold text-white">Informações Pessoais</h2>
                 </div>
 
                 {/* Nome e Status */}
-                <div className="flex flex-col md:flex-row md:items-center md:gap-4 mb-6">
-                  <h1 className="text-3xl md:text-4xl font-bold text-white">{aluno.name}</h1>
-                  <Badge variant={statusVariant} className="bg-orange-500 text-white border-orange-600 px-3 py-1 w-fit">
-                    {statusText}
-                  </Badge>
+                <div className="mb-6 pb-6 border-b border-blue-700">
+                  <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">{aluno.name}</h1>
+                  <div className="flex items-center gap-3">
+                    <Badge variant={statusVariant} className="bg-orange-500 text-white border-orange-600 px-3 py-1">
+                      {statusText}
+                    </Badge>
+                    <p className="text-sm text-blue-400">ID: {alunoId.slice(0, 8)}...</p>
+                  </div>
                 </div>
 
-                {/* Informações em grid */}
-                <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-5 gap-2">
+                {/* Informações */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                   <div className="space-y-1">
                     <p className="text-xs font-semibold text-orange-400 uppercase tracking-wide">Email</p>
-                    <p className="text-sm text-blue-200">{aluno.email}</p>
+                    <p className="text-sm text-blue-200 flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-blue-400" />
+                      {aluno.email}
+                    </p>
                   </div>
 
                   <div className="space-y-1">
                     <p className="text-xs font-semibold text-orange-400 uppercase tracking-wide">Telefone</p>
-                    <p className="text-sm text-blue-200">{aluno.phone}</p>
+                    <p className="text-sm text-blue-200 flex items-center gap-2">
+                      <Phone className="h-4 w-4 text-blue-400" />
+                      {aluno.phone}
+                    </p>
                   </div>
 
                   <div className="space-y-1">
@@ -249,31 +252,37 @@ export default function DetalhesAlunoPage() {
 
                   <div className="space-y-1">
                     <p className="text-xs font-semibold text-orange-400 uppercase tracking-wide">Data de Nascimento</p>
-                    <p className="text-sm text-blue-200">{new Date(aluno.birthDate).toLocaleDateString("pt-AO")}</p>
+                    <p className="text-sm text-blue-200 flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-blue-400" />
+                      {new Date(aluno.birthDate).toLocaleDateString("pt-AO")}
+                    </p>
                   </div>
 
-                  <div className="col-span-2 md:col-span-1 space-y-1">
+                  <div className="md:col-span-2 lg:col-span-2 space-y-1">
                     <p className="text-xs font-semibold text-orange-400 uppercase tracking-wide">Endereço</p>
-                    <p className="text-sm text-blue-200">{aluno.address}</p>
+                    <p className="text-sm text-blue-200 flex items-start gap-2">
+                      <MapPin className="h-4 w-4 text-blue-400 mt-0.5 shrink-0" />
+                      {aluno.address}
+                    </p>
                   </div>
                 </div>
               </div>
 
               {/* Separador */}
-              <Separator className="my-6 bg-blue-700/50" />
+              <Separator className="my-8 bg-blue-700/50" />
 
               {/* Seção: Formação Matriculada */}
               {formacao && (
-                <div className="mb-6">
-                  <div className="flex items-center gap-2 mb-4">
+                <div className="mb-8">
+                  <div className="flex items-center gap-2 mb-6">
                     <GraduationCap className="h-5 w-5 text-orange-400" />
                     <h2 className="text-xl font-bold text-white">Formação Matriculada</h2>
                   </div>
 
-                  <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 pb-6 border-b border-blue-700/50">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pb-8 border-b border-blue-700/50">
                     <div className="space-y-1">
                       <p className="text-xs font-semibold text-orange-400 uppercase tracking-wide">Curso</p>
-                      <p className="text-sm text-blue-200">{formacao.name}</p>
+                      <p className="text-sm font-semibold text-white">{formacao.name}</p>
                     </div>
                     <div className="space-y-1">
                       <p className="text-xs font-semibold text-orange-400 uppercase tracking-wide">Categoria</p>
@@ -287,26 +296,26 @@ export default function DetalhesAlunoPage() {
                       <p className="text-xs font-semibold text-orange-400 uppercase tracking-wide">Valor</p>
                       <p className="text-sm font-bold text-orange-400">{formacao.price.toLocaleString("pt-AO")} Kz</p>
                     </div>
-                  </div>
-                  <div className="space-y-1 pt-4 pb-6 border-b border-blue-700/50">
-                    <p className="text-xs font-semibold text-orange-400 uppercase tracking-wide">Descrição</p>
-                    <p className="text-sm text-blue-300">{formacao.description}</p>
+                    <div className="lg:col-span-4 space-y-1 pt-6">
+                      <p className="text-xs font-semibold text-orange-400 uppercase tracking-wide">Descrição</p>
+                      <p className="text-sm text-blue-300">{formacao.description}</p>
+                    </div>
                   </div>
                 </div>
               )}
 
               {/* Seção: Turma */}
               {turma && (
-                <div className="mb-6">
-                  <div className="flex items-center gap-2 mb-4">
+                <div className="mb-8">
+                  <div className="flex items-center gap-2 mb-6">
                     <Users className="h-5 w-5 text-orange-400" />
                     <h2 className="text-xl font-bold text-white">Turma</h2>
                   </div>
 
-                  <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-5 gap-4 pb-6 border-b border-blue-700/50">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-8 border-b border-blue-700/50">
                     <div className="space-y-1">
                       <p className="text-xs font-semibold text-orange-400 uppercase tracking-wide">Nome da Turma</p>
-                      <p className="text-sm text-blue-200">{turma.name}</p>
+                      <p className="text-sm font-semibold text-white">{turma.name}</p>
                     </div>
                     <div className="space-y-1">
                       <p className="text-xs font-semibold text-orange-400 uppercase tracking-wide">Horário</p>
@@ -331,12 +340,12 @@ export default function DetalhesAlunoPage() {
               {/* Seção: Histórico de Pagamentos */}
               {pagamentos.length > 0 && (
                 <div>
-                  <div className="flex items-center gap-2 mb-4">
+                  <div className="flex items-center gap-2 mb-6">
                     <CreditCard className="h-5 w-5 text-orange-400" />
                     <h2 className="text-xl font-bold text-white">Histórico de Pagamentos</h2>
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {pagamentos.map((pagamento) => {
                       const metodoPagamento = {
                         cash: "Dinheiro",
@@ -360,30 +369,27 @@ export default function DetalhesAlunoPage() {
                       }[realStatus] as any
 
                       return (
-                        <div key={pagamento.id} className="border border-blue-700/50 rounded-lg p-3 bg-blue-900/10 hover:bg-blue-900/20 transition-colors">
-                          <Separator className="my-2 bg-blue-700/30" />
-                          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-5 gap-3 text-xs">
+                        <div key={pagamento.id} className="border border-blue-700/50 rounded-lg p-4 bg-blue-900/10 hover:bg-blue-900/20 transition-colors">
+                          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
                             <div>
-                              <p className="text-blue-400 font-semibold">Valor</p>
-                              <p className="font-bold text-orange-400">{pagamento.amount.toLocaleString("pt-AO")} Kz</p>
+                              <p className="font-bold text-lg text-orange-400">{pagamento.amount.toLocaleString("pt-AO")} Kz</p>
+                              <p className="text-xs text-blue-400">
+                                {new Date(pagamento.createdAt).toLocaleDateString("pt-AO")}
+                              </p>
+                            </div>
+                            <Badge variant={statusColor} className="bg-orange-500 text-white border-orange-600 w-fit">
+                              {statusPagamento}
+                            </Badge>
+                          </div>
+                          <Separator className="my-3 bg-blue-700/30" />
+                          <div className="grid grid-cols-2 gap-4 text-xs">
+                            <div>
+                              <p className="text-blue-400 font-semibold">Método de Pagamento</p>
+                              <p className="text-blue-200 mt-1">{metodoPagamento}</p>
                             </div>
                             <div>
-                              <p className="text-blue-400 font-semibold">Data</p>
-                              <p className="text-blue-200">{new Date(pagamento.createdAt).toLocaleDateString("pt-AO")}</p>
-                            </div>
-                            <div>
-                              <p className="text-blue-400 font-semibold">Método</p>
-                              <p className="text-blue-200">{metodoPagamento}</p>
-                            </div>
-                            <div>
-                              <p className="text-blue-400 font-semibold">Prestações</p>
-                              <p className="text-blue-200">{getStats(pagamento.id).paidCount}/{pagamento.installments}</p>
-                            </div>
-                            <div>
-                              <p className="text-blue-400 font-semibold">Status</p>
-                              <Badge variant={statusColor} className="bg-orange-500 text-white border-orange-600 w-fit text-xs mt-1">
-                                {statusPagamento}
-                              </Badge>
+                              <p className="text-blue-400 font-semibold">Prestações Pagas</p>
+                              <p className="text-blue-200 mt-1">{getStats(pagamento.id).paidCount}/{pagamento.installments}</p>
                             </div>
                           </div>
                         </div>
