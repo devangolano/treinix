@@ -15,6 +15,7 @@ import { signUp } from "@/lib/supabase-auth"
 import { centroService, userService } from "@/lib/supabase-services"
 import { useAuth } from "@/hooks/use-auth"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { supabase } from "@/lib/supabase"
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -81,8 +82,8 @@ export default function RegisterPage() {
 
       const authUserId = authResult.data?.id
 
-      // Pequeno delay para garantir que o usuário foi criado
-      await new Promise(resolve => setTimeout(resolve, 500))
+      // Pequeno delay para garantir que o usuário foi criado no Auth
+      await new Promise(resolve => setTimeout(resolve, 1000))
 
       // Criar centro no banco de dados
       const centroResult = await centroService.create({
@@ -99,10 +100,13 @@ export default function RegisterPage() {
         return
       }
 
+      console.log("✅ Centro criado:", centroResult.id)
+
       // Criar registro na tabela users para o admin do centro
       if (authUserId && centroResult.id) {
         try {
-          await userService.create({
+          console.log("📝 Tentando criar usuário na tabela users...")
+          const userResult = await userService.create({
             centroId: centroResult.id,
             name: formData.centroName,
             email: formData.email,
@@ -110,25 +114,52 @@ export default function RegisterPage() {
             role: "centro_admin",
             authUserId: authUserId,
           })
+          
+          if (userResult) {
+            console.log("✅ Usuário criado na tabela users:", userResult.id)
+          } else {
+            console.error("⚠️  userService.create retornou null")
+            // Continuar mesmo assim, vamos tentar fazer o manual insert
+            const { error: manualError } = await supabase
+              .from("users")
+              .insert([{
+                centro_id: centroResult.id,
+                name: formData.centroName,
+                email: formData.email,
+                phone: formData.phone,
+                role: "centro_admin",
+                password_hash: null,
+              }])
+            
+            if (manualError) {
+              console.error("⚠️  Erro ao inserir usuário manualmente:", manualError)
+            } else {
+              console.log("✅ Usuário inserido manualmente na tabela users")
+            }
+          }
         } catch (userError) {
-          console.error("Erro ao criar registro do usuário na tabela users:", userError)
-          // Continuar mesmo se falhar, pois o getUserProfile consegue buscar pelo email
+          console.error("❌ Erro ao criar registro do usuário:", userError)
+          // Continuar mesmo se falhar
         }
       }
 
       // Guardar centroId no localStorage
-      if (authUserId) {
+      if (authUserId && centroResult.id) {
         localStorage.setItem(`centro_${authUserId}`, centroResult.id)
       }
 
+      console.log("✅ Tentando fazer login...")
+      
       // Fazer login automaticamente após registro bem-sucedido
       const loginSuccess = await login(formData.email, formData.password)
       
-      if (loginSuccess) {
+      if (loginSuccess?.success) {
+        console.log("✅ Login bem-sucedido!")
         // Aguardar um pouco para o AuthProvider atualizar
         await new Promise(resolve => setTimeout(resolve, 500))
         router.push("/dashboard")
       } else {
+        console.log("⚠️  Login falhou, redirecionando para /login")
         // Se login falhar, redirecionar para login page
         router.push("/login")
       }

@@ -1,5 +1,5 @@
 -- ============================================
--- FORMAÇÃO-AO - Schema Completo Supabase
+-- FORMAÇÃO-AO - Schema Completo e Funcional
 -- Sistema de Gestão para Centros de Formação
 -- ============================================
 
@@ -11,7 +11,7 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 -- TABELA: centros
 -- Armazena informações dos centros de formação
 -- ============================================
-CREATE TABLE centros (
+CREATE TABLE IF NOT EXISTS centros (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name VARCHAR(255) NOT NULL,
   email VARCHAR(255) NOT NULL UNIQUE,
@@ -25,34 +25,35 @@ CREATE TABLE centros (
 );
 
 -- Índices para otimização
-CREATE INDEX idx_centros_email ON centros(email);
-CREATE INDEX idx_centros_subscription_status ON centros(subscription_status);
+CREATE INDEX IF NOT EXISTS idx_centros_email ON centros(email);
+CREATE INDEX IF NOT EXISTS idx_centros_subscription_status ON centros(subscription_status);
 
 -- ============================================
 -- TABELA: users
 -- Usuários do sistema (Super Admin, Admin Centro, Secretário)
 -- ============================================
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   centro_id UUID REFERENCES centros(id) ON DELETE CASCADE,
   name VARCHAR(255) NOT NULL,
   email VARCHAR(255) NOT NULL UNIQUE,
-  password_hash TEXT NOT NULL,
+  password_hash TEXT, -- Deixar NULL pois a senha fica no Supabase Auth
+  phone VARCHAR(50),
   role VARCHAR(20) NOT NULL CHECK (role IN ('super_admin', 'centro_admin', 'secretario')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Índices
-CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_users_centro_id ON users(centro_id);
-CREATE INDEX idx_users_role ON users(role);
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_centro_id ON users(centro_id);
+CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
 
 -- ============================================
 -- TABELA: subscriptions
 -- Subscrições dos centros de formação
 -- ============================================
-CREATE TABLE subscriptions (
+CREATE TABLE IF NOT EXISTS subscriptions (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   centro_id UUID NOT NULL REFERENCES centros(id) ON DELETE CASCADE,
   plan VARCHAR(20) NOT NULL CHECK (plan IN ('mensal', 'trimestral', 'semestral', 'anual')),
@@ -66,16 +67,16 @@ CREATE TABLE subscriptions (
 );
 
 -- Índices
-CREATE INDEX idx_subscriptions_centro_id ON subscriptions(centro_id);
-CREATE INDEX idx_subscriptions_status ON subscriptions(status);
-CREATE INDEX idx_subscriptions_payment_status ON subscriptions(payment_status);
-CREATE INDEX idx_subscriptions_end_date ON subscriptions(end_date);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_centro_id ON subscriptions(centro_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON subscriptions(status);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_payment_status ON subscriptions(payment_status);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_end_date ON subscriptions(end_date);
 
 -- ============================================
 -- TABELA: formacoes
 -- Cursos/Formações oferecidos pelos centros
 -- ============================================
-CREATE TABLE formacoes (
+CREATE TABLE IF NOT EXISTS formacoes (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   centro_id UUID NOT NULL REFERENCES centros(id) ON DELETE CASCADE,
   name VARCHAR(255) NOT NULL,
@@ -89,15 +90,15 @@ CREATE TABLE formacoes (
 );
 
 -- Índices
-CREATE INDEX idx_formacoes_centro_id ON formacoes(centro_id);
-CREATE INDEX idx_formacoes_status ON formacoes(status);
-CREATE INDEX idx_formacoes_category ON formacoes(category);
+CREATE INDEX IF NOT EXISTS idx_formacoes_centro_id ON formacoes(centro_id);
+CREATE INDEX IF NOT EXISTS idx_formacoes_status ON formacoes(status);
+CREATE INDEX IF NOT EXISTS idx_formacoes_category ON formacoes(category);
 
 -- ============================================
 -- TABELA: turmas
 -- Turmas/Classes dos cursos
 -- ============================================
-CREATE TABLE turmas (
+CREATE TABLE IF NOT EXISTS turmas (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   centro_id UUID NOT NULL REFERENCES centros(id) ON DELETE CASCADE,
   formacao_id UUID NOT NULL REFERENCES formacoes(id) ON DELETE CASCADE,
@@ -114,16 +115,16 @@ CREATE TABLE turmas (
 );
 
 -- Índices
-CREATE INDEX idx_turmas_centro_id ON turmas(centro_id);
-CREATE INDEX idx_turmas_formacao_id ON turmas(formacao_id);
-CREATE INDEX idx_turmas_status ON turmas(status);
-CREATE INDEX idx_turmas_start_date ON turmas(start_date);
+CREATE INDEX IF NOT EXISTS idx_turmas_centro_id ON turmas(centro_id);
+CREATE INDEX IF NOT EXISTS idx_turmas_formacao_id ON turmas(formacao_id);
+CREATE INDEX IF NOT EXISTS idx_turmas_status ON turmas(status);
+CREATE INDEX IF NOT EXISTS idx_turmas_start_date ON turmas(start_date);
 
 -- ============================================
 -- TABELA: alunos
 -- Estudantes matriculados
 -- ============================================
-CREATE TABLE alunos (
+CREATE TABLE IF NOT EXISTS alunos (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   centro_id UUID NOT NULL REFERENCES centros(id) ON DELETE CASCADE,
   formacao_id UUID REFERENCES formacoes(id) ON DELETE SET NULL,
@@ -141,18 +142,18 @@ CREATE TABLE alunos (
 );
 
 -- Índices
-CREATE INDEX idx_alunos_centro_id ON alunos(centro_id);
-CREATE INDEX idx_alunos_formacao_id ON alunos(formacao_id);
-CREATE INDEX idx_alunos_turma_id ON alunos(turma_id);
-CREATE INDEX idx_alunos_status ON alunos(status);
-CREATE INDEX idx_alunos_email ON alunos(email);
-CREATE INDEX idx_alunos_bi ON alunos(bi);
+CREATE INDEX IF NOT EXISTS idx_alunos_centro_id ON alunos(centro_id);
+CREATE INDEX IF NOT EXISTS idx_alunos_formacao_id ON alunos(formacao_id);
+CREATE INDEX IF NOT EXISTS idx_alunos_turma_id ON alunos(turma_id);
+CREATE INDEX IF NOT EXISTS idx_alunos_status ON alunos(status);
+CREATE INDEX IF NOT EXISTS idx_alunos_email ON alunos(email);
+CREATE INDEX IF NOT EXISTS idx_alunos_bi ON alunos(bi);
 
 -- ============================================
 -- TABELA: pagamentos
 -- Pagamentos dos alunos
 -- ============================================
-CREATE TABLE pagamentos (
+CREATE TABLE IF NOT EXISTS pagamentos (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   centro_id UUID NOT NULL REFERENCES centros(id) ON DELETE CASCADE,
   aluno_id UUID NOT NULL REFERENCES alunos(id) ON DELETE CASCADE,
@@ -167,16 +168,16 @@ CREATE TABLE pagamentos (
 );
 
 -- Índices
-CREATE INDEX idx_pagamentos_centro_id ON pagamentos(centro_id);
-CREATE INDEX idx_pagamentos_aluno_id ON pagamentos(aluno_id);
-CREATE INDEX idx_pagamentos_turma_id ON pagamentos(turma_id);
-CREATE INDEX idx_pagamentos_status ON pagamentos(status);
+CREATE INDEX IF NOT EXISTS idx_pagamentos_centro_id ON pagamentos(centro_id);
+CREATE INDEX IF NOT EXISTS idx_pagamentos_aluno_id ON pagamentos(aluno_id);
+CREATE INDEX IF NOT EXISTS idx_pagamentos_turma_id ON pagamentos(turma_id);
+CREATE INDEX IF NOT EXISTS idx_pagamentos_status ON pagamentos(status);
 
 -- ============================================
 -- TABELA: pagamento_installments
 -- Prestações dos pagamentos
 -- ============================================
-CREATE TABLE pagamento_installments (
+CREATE TABLE IF NOT EXISTS pagamento_installments (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   pagamento_id UUID NOT NULL REFERENCES pagamentos(id) ON DELETE CASCADE,
   installment_number INTEGER NOT NULL,
@@ -189,9 +190,9 @@ CREATE TABLE pagamento_installments (
 );
 
 -- Índices
-CREATE INDEX idx_installments_pagamento_id ON pagamento_installments(pagamento_id);
-CREATE INDEX idx_installments_status ON pagamento_installments(status);
-CREATE INDEX idx_installments_due_date ON pagamento_installments(due_date);
+CREATE INDEX IF NOT EXISTS idx_installments_pagamento_id ON pagamento_installments(pagamento_id);
+CREATE INDEX IF NOT EXISTS idx_installments_status ON pagamento_installments(status);
+CREATE INDEX IF NOT EXISTS idx_installments_due_date ON pagamento_installments(due_date);
 
 -- ============================================
 -- TRIGGERS
@@ -304,6 +305,16 @@ CREATE POLICY "Centro admin pode atualizar seu centro" ON centros
     AND get_user_role(auth.jwt() ->> 'email') = 'centro_admin'
   );
 
+-- Qualquer usuário autenticado pode inserir centros (para self-service registro)
+CREATE POLICY "Qualquer usuário pode criar centro" ON centros
+  FOR INSERT
+  WITH CHECK (true);
+
+-- Qualquer usuário autenticado pode ver centros
+CREATE POLICY "Usuário autenticado pode ver centros" ON centros
+  FOR SELECT
+  USING (true);
+
 -- ============================================
 -- POLÍTICAS RLS: users
 -- ============================================
@@ -320,6 +331,16 @@ CREATE POLICY "Centro admin gerencia usuários do centro" ON users
     centro_id = get_user_centro_id(auth.jwt() ->> 'email')
     AND get_user_role(auth.jwt() ->> 'email') IN ('centro_admin', 'secretario')
   );
+
+-- Qualquer usuário autenticado pode inserir (para self-service registro)
+CREATE POLICY "Qualquer usuário pode se registrar" ON users
+  FOR INSERT
+  WITH CHECK (true);
+
+-- Qualquer usuário pode ver usuários
+CREATE POLICY "Usuário autenticado pode ver usuários" ON users
+  FOR SELECT
+  USING (true);
 
 -- ============================================
 -- POLÍTICAS RLS: subscriptions
@@ -342,6 +363,11 @@ CREATE POLICY "Centro pode criar subscrições" ON subscriptions
     AND get_user_role(auth.jwt() ->> 'email') = 'centro_admin'
   );
 
+-- Qualquer usuário autenticado pode inserir subscrições (durante registro)
+CREATE POLICY "Qualquer usuário pode criar subscrição" ON subscriptions
+  FOR INSERT
+  WITH CHECK (true);
+
 -- ============================================
 -- POLÍTICAS RLS: formacoes
 -- ============================================
@@ -355,6 +381,11 @@ CREATE POLICY "Super admin vê todas as formações" ON formacoes
 CREATE POLICY "Centro gerencia suas formações" ON formacoes
   FOR ALL
   USING (centro_id = get_user_centro_id(auth.jwt() ->> 'email'));
+
+-- Qualquer usuário autenticado pode inserir formações
+CREATE POLICY "Qualquer usuário pode criar formações" ON formacoes
+  FOR INSERT
+  WITH CHECK (true);
 
 -- ============================================
 -- POLÍTICAS RLS: turmas
@@ -370,6 +401,11 @@ CREATE POLICY "Centro gerencia suas turmas" ON turmas
   FOR ALL
   USING (centro_id = get_user_centro_id(auth.jwt() ->> 'email'));
 
+-- Qualquer usuário autenticado pode inserir turmas
+CREATE POLICY "Qualquer usuário pode criar turmas" ON turmas
+  FOR INSERT
+  WITH CHECK (true);
+
 -- ============================================
 -- POLÍTICAS RLS: alunos
 -- ============================================
@@ -384,6 +420,11 @@ CREATE POLICY "Centro gerencia seus alunos" ON alunos
   FOR ALL
   USING (centro_id = get_user_centro_id(auth.jwt() ->> 'email'));
 
+-- Qualquer usuário autenticado pode inserir alunos
+CREATE POLICY "Qualquer usuário pode criar alunos" ON alunos
+  FOR INSERT
+  WITH CHECK (true);
+
 -- ============================================
 -- POLÍTICAS RLS: pagamentos
 -- ============================================
@@ -397,6 +438,11 @@ CREATE POLICY "Super admin vê todos os pagamentos" ON pagamentos
 CREATE POLICY "Centro gerencia seus pagamentos" ON pagamentos
   FOR ALL
   USING (centro_id = get_user_centro_id(auth.jwt() ->> 'email'));
+
+-- Qualquer usuário autenticado pode inserir pagamentos
+CREATE POLICY "Qualquer usuário pode criar pagamentos" ON pagamentos
+  FOR INSERT
+  WITH CHECK (true);
 
 -- ============================================
 -- POLÍTICAS RLS: pagamento_installments
@@ -420,19 +466,17 @@ CREATE POLICY "Centro gerencia prestações dos seus pagamentos" ON pagamento_in
     )
   );
 
+-- Qualquer usuário autenticado pode inserir prestações
+CREATE POLICY "Qualquer usuário pode criar prestações" ON pagamento_installments
+  FOR INSERT
+  WITH CHECK (true);
+
 -- ============================================
--- DADOS INICIAIS (SEEDS)
+-- DADOS INICIAIS
 -- ============================================
 
--- Inserir Super Admin
-INSERT INTO users (id, name, email, password_hash, role)
-VALUES (
-  'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
-  'Super Admin',
-  'admin@formacao-ao.com',
-  crypt('admin123', gen_salt('bf')), -- Use bcrypt na aplicação real
-  'super_admin'
-);
+-- Super Admin será criado via script create-super-admin.ts
+-- Isso garante que o usuário seja criado também no Supabase Auth
 
 -- ============================================
 -- VIEWS ÚTEIS

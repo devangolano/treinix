@@ -1061,45 +1061,20 @@ export const userService = {
     password?: string
   }): Promise<any | null> {
     try {
-      let authUserId = data.authUserId
-      let generatedPassword = ""
+      const authUserId = data.authUserId
 
-      // Se não foi fornecido um authUserId, criar uma conta de autenticação no Supabase Auth
+      // Se não foi fornecido um authUserId, não criamos o registro
       if (!authUserId) {
-        // Se não há senha, gerar uma temporária
-        if (!data.password) {
-          // Gerar senha aleatória de 12 caracteres
-          const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%"
-          generatedPassword = Array.from({ length: 12 }, () =>
-            chars.charAt(Math.floor(Math.random() * chars.length))
-          ).join("")
-        }
-
-        const password = data.password || generatedPassword
-
-        // Criar usuário no Supabase Auth usando signUp
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: data.email,
-          password,
-          options: {
-            data: {
-              name: data.name,
-              role: data.role,
-            },
-          },
-        })
-
-        if (authError) {
-          console.error("Erro ao criar conta de autenticação:", authError)
-          throw authError
-        }
-
-        if (authData.user) {
-          authUserId = authData.user.id
-        } else {
-          throw new Error("Falha ao criar usuário de autenticação")
-        }
+        console.error("⚠️  authUserId não fornecido. Não é possível criar usuário sem auth_user_id")
+        return null
       }
+
+      console.log("📝 Criando usuário na tabela users:", {
+        centro_id: data.centroId,
+        email: data.email,
+        auth_user_id: authUserId,
+        role: data.role,
+      })
 
       // Criar registro na tabela users com o authUserId
       const { data: newUser, error } = await supabase
@@ -1118,7 +1093,12 @@ export const userService = {
         .select()
         .single()
 
-      if (error) throw error
+      if (error) {
+        console.error("❌ Erro ao inserir usuário na tabela:", error)
+        throw error
+      }
+
+      console.log("✅ Usuário criado com sucesso:", newUser.id)
 
       return {
         id: newUser.id,
@@ -1132,10 +1112,9 @@ export const userService = {
         lastLogin: newUser.last_login ? new Date(newUser.last_login) : undefined,
         createdAt: new Date(newUser.created_at),
         updatedAt: new Date(newUser.updated_at),
-        generatedPassword: generatedPassword || undefined, // Retornar senha gerada se foi criada
       }
     } catch (error) {
-      console.error("Erro ao criar usuário:", error)
+      console.error("❌ Erro ao criar usuário:", error)
       return null
     }
   },

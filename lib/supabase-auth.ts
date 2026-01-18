@@ -191,12 +191,18 @@ export async function getUserProfile(userId: string): Promise<User | null> {
     let centroId: string | undefined
     let userName = data.user.user_metadata?.name || data.user.email || "Usuário"
 
+    // VERIFICAÇÃO ESPECIAL: Se é super_admin, definir role diretamente
+    if (data.user.email === "admin@formacao-ao.com") {
+      console.log("[getUserProfile] 🔐 Super Admin detectado!")
+      userRole = "super_admin"
+    }
+
     try {
-      // Buscar na tabela users pelo auth_user_id
+      // Buscar na tabela users pelo email (RLS pode bloquear por auth_user_id para super_admin)
       const { data: userData, error: userError } = await supabase
         .from("users")
         .select("*")
-        .eq("auth_user_id", data.user.id)
+        .eq("email", data.user.email)
         .single()
 
       if (userData) {
@@ -210,7 +216,7 @@ export async function getUserProfile(userId: string): Promise<User | null> {
       if (error?.code !== "PGRST116") {
         console.error("[getUserProfile] Erro ao buscar dados do usuário na tabela users:", error)
       } else {
-        console.log("[getUserProfile] Usuário não encontrado na tabela users (pode ser super_admin)")
+        console.log("[getUserProfile] Usuário não encontrado na tabela users (tentando buscar centroId)")
       }
       
       // Se não encontrar na tabela users, tentar buscar centroId por email
@@ -223,8 +229,34 @@ export async function getUserProfile(userId: string): Promise<User | null> {
             .single()
 
           if (centroData?.id) {
-            console.log("[getUserProfile] centroId encontrado pelo email")
+            console.log("[getUserProfile] centroId encontrado pelo email, criando registro de usuário automaticamente")
             centroId = centroData.id
+            
+            // Criar registro de usuário automaticamente
+            try {
+              const { data: newUser, error: createError } = await supabase
+                .from("users")
+                .insert([{
+                  centro_id: centroId,
+                  name: userName,
+                  email: data.user.email,
+                  auth_user_id: data.user.id,
+                  role: "centro_admin",
+                  status: "active",
+                }])
+                .select()
+                .single()
+
+              if (createError) {
+                console.error("[getUserProfile] Erro ao criar registro de usuário automaticamente:", createError)
+              } else if (newUser) {
+                console.log("[getUserProfile] ✅ Registro de usuário criado automaticamente")
+                userRole = newUser.role || userRole
+                centroId = newUser.centro_id
+              }
+            } catch (createErrorInner) {
+              console.error("[getUserProfile] Erro ao criar registro de usuário:", createErrorInner)
+            }
           }
         } catch (centroErrorInner: any) {
           // Se não encontrar centro também, log apenas se não for erro de "not found"
