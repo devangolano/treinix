@@ -25,7 +25,7 @@ export default function EditarAlunoPage() {
   const { user: currentUser } = useAuth()
   const [formacoes, setFormacoes] = useState<Formacao[]>([])
   const [turmas, setTurmas] = useState<Turma[]>([])
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const { toast } = useToast()
 
   const [formData, setFormData] = useState({
@@ -49,29 +49,60 @@ export default function EditarAlunoPage() {
   }, [currentUser, router, alunoId])
 
   const loadData = async (centroId: string) => {
+    setLoading(true)
     try {
+      console.log("[EditarAluno] Iniciando carregamento - alunoId:", alunoId, "centroId:", centroId)
+      
       const formacoesData = await formacaoService.getAll(centroId)
       const turmasData = await turmaService.getAll(centroId)
       setFormacoes(formacoesData)
       setTurmas(turmasData)
 
-      const aluno = await alunoService.getById(alunoId)
+      console.log("[EditarAluno] Tentando buscar aluno diretamente com ID:", alunoId)
+      let aluno = await alunoService.getById(alunoId)
+      
+      // Se não encontrou direto (pode ser problema de RLS), buscar a lista e filtrar
+      if (!aluno) {
+        console.log("[EditarAluno] Aluno não encontrado direto, tentando buscar da lista de alunos do centro...")
+        const alunosList = await alunoService.getAll(centroId)
+        aluno = alunosList.find(a => a.id === alunoId) || null
+      }
+      
+      console.log("[EditarAluno] Aluno obtido:", aluno)
+      
       if (aluno) {
+        let birthDateFormatted = ""
+        if (aluno.birthDate) {
+          const dateStr = aluno.birthDate instanceof Date 
+            ? aluno.birthDate.toISOString()
+            : String(aluno.birthDate)
+          birthDateFormatted = dateStr.split('T')[0]
+        }
+        console.log("[EditarAluno] Dados formatados:", {
+          name: aluno.name,
+          email: aluno.email,
+          birthDate: birthDateFormatted,
+        })
         setFormData({
           name: aluno.name,
           email: aluno.email,
           phone: aluno.phone,
           bi: aluno.bi,
           address: aluno.address,
-          birthDate: aluno.birthDate.toISOString().split("T")[0],
+          birthDate: birthDateFormatted,
           status: aluno.status,
           formacaoId: aluno.formacaoId || "",
           turmaId: aluno.turmaId || "",
         })
+      } else {
+        console.warn("[EditarAluno] Aluno não encontrado!")
+        toast({ title: "Aluno não encontrado", variant: "destructive" })
       }
     } catch (error) {
-      console.error("Erro ao carregar dados:", error)
+      console.error("[EditarAluno] Erro ao carregar dados:", error)
       toast({ title: "Erro ao carregar dados", variant: "destructive" })
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -91,12 +122,24 @@ export default function EditarAlunoPage() {
       router.push("/dashboard/alunos")
     } catch (error) {
       toast({ title: "Erro ao atualizar aluno", variant: "destructive" })
+      console.error("Erro ao atualizar aluno:", error)
     } finally {
       setLoading(false)
     }
   }
 
   if (!currentUser) return null
+  
+  if (loading) {
+    return (
+      <div className="flex h-screen flex-col md:flex-row bg-slate-900">
+        <CentroSidebar />
+        <div className="flex-1 overflow-auto pt-16 md:pt-0 bg-slate-900 flex items-center justify-center">
+          <div className="text-white">Carregando...</div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-screen flex-col md:flex-row bg-slate-900">

@@ -603,13 +603,22 @@ export const alunoService = {
    */
   async getById(id: string): Promise<Aluno | null> {
     try {
+      console.log("[alunoService] Buscando aluno com ID:", id)
       const { data, error } = await supabase.from("alunos").select("*").eq("id", id).single()
 
-      if (error) throw error
+      if (error) {
+        console.error("[alunoService] Erro da query:", error)
+        throw error
+      }
 
-      if (!data) return null
+      console.log("[alunoService] Dados retornados:", data)
 
-      return {
+      if (!data) {
+        console.warn("[alunoService] Nenhum aluno encontrado com ID:", id)
+        return null
+      }
+
+      const aluno = {
         ...data,
         centroId: data.centro_id,
         turmaId: data.turma_id,
@@ -618,8 +627,10 @@ export const alunoService = {
         createdAt: new Date(data.created_at),
         updatedAt: new Date(data.updated_at),
       }
+      console.log("[alunoService] Aluno processado:", aluno)
+      return aluno
     } catch (error) {
-      console.error("Erro ao buscar aluno:", error)
+      console.error("[alunoService] Erro ao buscar aluno:", error)
       return null
     }
   },
@@ -676,6 +687,7 @@ export const alunoService = {
       if (data.phone) updateData.phone = data.phone
       if (data.bi) updateData.bi = data.bi
       if (data.address) updateData.address = data.address
+      if (data.birthDate) updateData.birth_date = data.birthDate instanceof Date ? data.birthDate.toISOString().split("T")[0] : data.birthDate
       if (data.status) updateData.status = data.status
       if (data.turmaId) updateData.turma_id = data.turmaId
       if (data.formacaoId) updateData.formacao_id = data.formacaoId
