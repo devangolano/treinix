@@ -7,8 +7,6 @@ interface AlunoFichaData {
   bi: string
   birthDate: Date | string
   address: string
-  formacaoName: string
-  turmaName: string
   status: string
   createdAt: Date | string
   centroName?: string
@@ -224,20 +222,6 @@ export async function generateAlunoPDF(alunoData: AlunoFichaData) {
       y: height - yPosition,
       size: 9,
       color: darkGray,
-    })
-
-    yPosition += 12
-    page.drawText(alunoData.formacaoName, {
-      x: 50,
-      y: height - yPosition,
-      size: 10,
-      color: black,
-    })
-    page.drawText(alunoData.turmaName, {
-      x: 320,
-      y: height - yPosition,
-      size: 10,
-      color: black,
     })
 
     // Data de Inscrição

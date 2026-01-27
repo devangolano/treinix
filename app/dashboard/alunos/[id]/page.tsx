@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
-import { alunoService, formacaoService, turmaService, pagamentoService, pagamentoInstallmentService, centroService } from "@/lib/supabase-services"
+import { alunoService, formacaoService, turmaService, pagamentoService, pagamentoInstallmentService, centroService, matriculaService } from "@/lib/supabase-services"
 import { CentroSidebar } from "@/components/centro-sidebar"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -20,9 +20,10 @@ import {
   GraduationCap,
   Users,
   Award as IdCard,
+  Plus,
 } from "lucide-react"
 import Link from "next/link"
-import type { Aluno, Formacao, Turma, Pagamento, Centro } from "@/lib/types"
+import type { Aluno, Formacao, Turma, Pagamento, Centro, Matricula } from "@/lib/types"
 import { useAuth } from "@/hooks/use-auth"
 import { useToast } from "@/hooks/use-toast"
 import { generateAlunoPDF } from "@/lib/pdf-generator"
@@ -34,11 +35,11 @@ export default function DetalhesAlunoPage() {
   const { user: currentUser } = useAuth()
   const { toast } = useToast()
   const [aluno, setAluno] = useState<Aluno | null>(null)
-  const [formacao, setFormacao] = useState<Formacao | null>(null)
-  const [turma, setTurma] = useState<Turma | null>(null)
   const [centro, setCentro] = useState<Centro | null>(null)
-  const [pagamentos, setPagamentos] = useState<Pagamento[]>([])
-  const [alunos, setAlunos] = useState<Aluno[]>([])
+  const [matriculas, setMatriculas] = useState<Matricula[]>([])
+  const [formacoesMap, setFormacoesMap] = useState<Record<string, Formacao>>({})
+  const [turmasMap, setTurmasMap] = useState<Record<string, Turma>>({})
+  const [pagamentosMap, setPagamentosMap] = useState<Record<string, Pagamento[]>>({})
   const [loading, setLoading] = useState(true)
   const [installmentStats, setInstallmentStats] = useState<Record<string, { paidCount: number; totalCount: number; percentage: number }>>({})
 
@@ -50,9 +51,32 @@ export default function DetalhesAlunoPage() {
     loadData(currentUser.centroId)
   }, [currentUser, router, alunoId])
 
+  // Listener para recarregar dados quando um pagamento for criado
+  useEffect(() => {
+    const handlePagamentoCreated = () => {
+      console.log("📢 [DetalhesAluno] Evento: pagamento criado, recarregando dados...")
+      if (currentUser?.centroId) {
+        loadData(currentUser.centroId)
+      }
+    }
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("pagamento:created", handlePagamentoCreated)
+    }
+
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("pagamento:created", handlePagamentoCreated)
+      }
+    }
+  }, [currentUser, alunoId])
+
   const loadData = async (centroId: string) => {
     try {
       setLoading(true)
+      console.log("[DetalhesAluno] Carregando dados para aluno:", alunoId)
+      
+      // Carregar aluno
       const alunoData = await alunoService.getById(alunoId)
       
       if (!alunoData) {
@@ -62,48 +86,74 @@ export default function DetalhesAlunoPage() {
       }
 
       setAluno(alunoData)
+      console.log("[DetalhesAluno] Aluno carregado:", alunoData.name)
 
       // Carregar dados do centro
       const centroData = await centroService.getById(centroId)
       setCentro(centroData || null)
 
-      if (alunoData.formacaoId) {
-        const formacaoData = await formacaoService.getById(alunoData.formacaoId)
-        setFormacao(formacaoData || null)
-      }
+      // Carregar matrículas do aluno
+      const matriculasData = await matriculaService.getByAlunoId(alunoId)
+      setMatriculas(matriculasData)
+      console.log("[DetalhesAluno] Matrículas encontradas:", matriculasData.length)
 
-      if (alunoData.turmaId) {
-        const turmaData = await turmaService.getById(alunoData.turmaId)
-        setTurma(turmaData || null)
-      }
+      // Carregar dados de formações e turmas
+      const [formacoesData, turmasData, pagamentosData] = await Promise.all([
+        formacaoService.getAll(centroId),
+        turmaService.getAll(centroId),
+        pagamentoService.getAll(centroId),
+      ])
 
-      const pagamentosData = await pagamentoService.getAll(centroId)
-      const filtered = pagamentosData.filter((p) => p.alunoId === alunoId)
-      setPagamentos(filtered)
+      // Criar mapas para acesso rápido
+      const formacoesMapLocal: Record<string, Formacao> = {}
+      formacoesData.forEach((f) => {
+        formacoesMapLocal[f.id] = f
+      })
+      setFormacoesMap(formacoesMapLocal)
 
-      // Buscar todos os alunos para mostrar quantos estão na mesma turma
-      const alunosData = await alunoService.getAll(centroId)
-      setAlunos(alunosData)
+      const turmasMapLocal: Record<string, Turma> = {}
+      turmasData.forEach((t) => {
+        turmasMapLocal[t.id] = t
+      })
+      setTurmasMap(turmasMapLocal)
+
+      // Organizar pagamentos por matrícula
+      const pagamentosMapLocal: Record<string, Pagamento[]> = {}
+      console.log("[DetalhesAluno] Total de pagamentos disponíveis:", pagamentosData.length)
+      console.log("[DetalhesAluno] Matrículas para mapear:", matriculasData.map(m => ({ id: m.id, formacao: m.formacaoId })))
+      
+      matriculasData.forEach((m) => {
+        const pagamentosMatricula = pagamentosData.filter((p) => p.matriculaId === m.id)
+        console.log(`[DetalhesAluno] Matrícula ${m.id} tem ${pagamentosMatricula.length} pagamentos`)
+        if (pagamentosMatricula.length > 0) {
+          console.log(`[DetalhesAluno] Pagamentos da matrícula:`, pagamentosMatricula.map(p => ({ id: p.id, matriculaId: p.matriculaId, amount: p.amount })))
+        }
+        pagamentosMapLocal[m.id] = pagamentosMatricula
+      })
+      setPagamentosMap(pagamentosMapLocal)
+      console.log("[DetalhesAluno] Pagamentos mapeados por matrícula:", Object.keys(pagamentosMapLocal).map(k => ({ matriculaId: k, count: pagamentosMapLocal[k].length })))
 
       // Calcular stats de prestações para cada pagamento
       const stats: Record<string, { paidCount: number; totalCount: number; percentage: number }> = {}
-      for (const pagamento of filtered) {
-        try {
-          const installments = await pagamentoInstallmentService.getByPagamentoId(pagamento.id)
-          const paidCount = installments.filter((i) => i.status === "paid").length
-          stats[pagamento.id] = {
-            paidCount,
-            totalCount: installments.length,
-            percentage: installments.length > 0 ? Math.round((paidCount / installments.length) * 100) : 0,
+      for (const pagamentosList of Object.values(pagamentosMapLocal)) {
+        for (const pagamento of pagamentosList) {
+          try {
+            const installments = await pagamentoInstallmentService.getByPagamentoId(pagamento.id)
+            const paidCount = installments.filter((i) => i.status === "paid").length
+            stats[pagamento.id] = {
+              paidCount,
+              totalCount: installments.length,
+              percentage: installments.length > 0 ? Math.round((paidCount / installments.length) * 100) : 0,
+            }
+          } catch (error) {
+            console.error(`[DetalhesAluno] Erro ao buscar prestações do pagamento ${pagamento.id}:`, error)
+            stats[pagamento.id] = { paidCount: 0, totalCount: 0, percentage: 0 }
           }
-        } catch (error) {
-          console.error(`Erro ao buscar prestações do pagamento ${pagamento.id}:`, error)
-          stats[pagamento.id] = { paidCount: 0, totalCount: 0, percentage: 0 }
         }
       }
       setInstallmentStats(stats)
     } catch (error) {
-      console.error("Erro ao carregar dados:", error)
+      console.error("[DetalhesAluno] Erro ao carregar dados:", error)
       toast({ title: "Erro ao carregar dados", variant: "destructive" })
     } finally {
       setLoading(false)
@@ -122,14 +172,17 @@ export default function DetalhesAlunoPage() {
     return pagamento.status
   }
 
-  const handleDownloadPDF = async () => {
+  const handleDownloadPDF = async (matricula: Matricula) => {
     try {
+      const formacao = formacoesMap[matricula.formacaoId]
+      const turma = turmasMap[matricula.turmaId]
+      
       if (!aluno || !formacao || !turma || !centro) {
         toast({ title: "Erro", description: "Dados incompletos para gerar o PDF", variant: "destructive" })
         return
       }
 
-      // Obter dados de pagamento
+      const pagamentos = pagamentosMap[matricula.id] || []
       const pagamento = pagamentos.length > 0 ? pagamentos[0] : null
 
       // Converter status de pagamento
@@ -156,8 +209,6 @@ export default function DetalhesAlunoPage() {
         bi: aluno.bi,
         birthDate: aluno.birthDate,
         address: aluno.address,
-        formacaoName: formacao.name,
-        turmaName: turma.name,
         status: aluno.status,
         createdAt: aluno.createdAt,
         centroName: centro.name,
@@ -171,9 +222,9 @@ export default function DetalhesAlunoPage() {
         systemPhone: "Contacto: 948324028",
       })
 
-      toast({ title: "Ficha baixada com sucesso!", description: `${aluno.name}.pdf` })
+      toast({ title: "Ficha baixada com sucesso!", description: `${aluno.name}_${formacao.name}.pdf` })
     } catch (error) {
-      console.error("Erro ao gerar PDF:", error)
+      console.error("[DetalhesAluno] Erro ao gerar PDF:", error)
       toast({ title: "Erro ao gerar PDF", variant: "destructive" })
     }
   }
@@ -199,14 +250,16 @@ export default function DetalhesAlunoPage() {
             </Link>
 
             <div className="flex gap-2">
-              <Button onClick={handleDownloadPDF} variant="outline" className="border-green-600 text-green-300 hover:bg-green-600 hover:text-white hover:border-green-600">
-                <Download className="h-4 w-4 mr-2" />
-                Baixar PDF
-              </Button>
-              <Link href={`/dashboard/alunos/${alunoId}/editar`}>
+              <Link href={`/dashboard/alunos/${alunoId}/nova-matricula`}>
                 <Button className="bg-orange-500 hover:bg-orange-600 text-white font-semibold">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Matricular em Curso
+                </Button>
+              </Link>
+              <Link href={`/dashboard/alunos/${alunoId}/editar`}>
+                <Button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold">
                   <Edit className="h-4 w-4 mr-2" />
-                  Editar
+                  Editar Dados
                 </Button>
               </Link>
             </div>
@@ -215,7 +268,7 @@ export default function DetalhesAlunoPage() {
           {/* Card Único com Todas as Seções */}
           <Card className="bg-blue-900/20 border-blue-800">
             <CardContent className="pt-6">
-              {/* Seção: Informações Pessoais (com Nome e Status) */}
+              {/* Seção: Informações Pessoais */}
               <div>
                 <div className="flex items-center gap-2 mb-4">
                   <IdCard className="h-5 w-5 text-orange-400" />
@@ -262,136 +315,174 @@ export default function DetalhesAlunoPage() {
               {/* Separador */}
               <Separator className="my-6 bg-blue-700/50" />
 
-              {/* Seção: Formação Matriculada */}
-              {formacao && (
-                <div className="mb-6">
-                  <div className="flex items-center gap-2 mb-4">
-                    <GraduationCap className="h-5 w-5 text-orange-400" />
-                    <h2 className="text-xl font-bold text-white">Formação Matriculada</h2>
-                  </div>
-
-                  <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 pb-6 border-b border-blue-700/50">
-                    <div className="space-y-1">
-                      <p className="text-xs font-semibold text-orange-400 uppercase tracking-wide">Curso</p>
-                      <p className="text-sm text-blue-200">{formacao.name}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs font-semibold text-orange-400 uppercase tracking-wide">Categoria</p>
-                      <p className="text-sm text-blue-200">{formacao.category}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs font-semibold text-orange-400 uppercase tracking-wide">Duração</p>
-                      <p className="text-sm text-blue-200">{formacao.duration}h</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs font-semibold text-orange-400 uppercase tracking-wide">Valor</p>
-                      <p className="text-sm font-bold text-orange-400">{formacao.price.toLocaleString("pt-AO")} Kz</p>
-                    </div>
-                  </div>
-                  <div className="space-y-1 pt-4 pb-6 border-b border-blue-700/50">
-                    <p className="text-xs font-semibold text-orange-400 uppercase tracking-wide">Descrição</p>
-                    <p className="text-sm text-blue-300">{formacao.description}</p>
-                  </div>
+              {/* Seção: Matrículas */}
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <GraduationCap className="h-5 w-5 text-orange-400" />
+                  <h2 className="text-xl font-bold text-white">
+                    Matrículas ({matriculas.length})
+                  </h2>
                 </div>
-              )}
 
-              {/* Seção: Turma */}
-              {turma && (
-                <div className="mb-6">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Users className="h-5 w-5 text-orange-400" />
-                    <h2 className="text-xl font-bold text-white">Turma</h2>
+                {/* Debug Info */}
+                {matriculas.length > 0 && (
+                  <div className="mb-4 p-3 bg-blue-800/50 rounded border border-blue-600 text-xs text-blue-300">
+                    <p>Debug: {Object.keys(pagamentosMap).length} matrículas com dados de pagamento</p>
                   </div>
+                )}
 
-                  <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-5 gap-4 pb-6 border-b border-blue-700/50">
-                    <div className="space-y-1">
-                      <p className="text-xs font-semibold text-orange-400 uppercase tracking-wide">Nome da Turma</p>
-                      <p className="text-sm text-blue-200">{turma.name}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs font-semibold text-orange-400 uppercase tracking-wide">Horário</p>
-                      <p className="text-sm text-blue-200">{turma.schedule}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs font-semibold text-orange-400 uppercase tracking-wide">Vagas</p>
-                      <p className="text-sm text-blue-200">{alunos.filter((a) => a.turmaId === turma.id).length} / {turma.maxStudents} alunos</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs font-semibold text-orange-400 uppercase tracking-wide">Data de Início</p>
-                      <p className="text-sm text-blue-200">{new Date(turma.startDate).toLocaleDateString("pt-AO")}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs font-semibold text-orange-400 uppercase tracking-wide">Data de Término</p>
-                      <p className="text-sm text-blue-200">{new Date(turma.endDate).toLocaleDateString("pt-AO")}</p>
-                    </div>
+                {matriculas.length === 0 ? (
+                  <div className="bg-blue-900/10 border border-blue-700/50 rounded-lg p-6 text-center">
+                    <p className="text-blue-300 mb-4">Este aluno não possui matrículas ativas.</p>
+                    <Link href={`/dashboard/alunos/${alunoId}/nova-matricula`}>
+                      <Button className="bg-orange-500 hover:bg-orange-600">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Adicionar Primeira Matrícula
+                      </Button>
+                    </Link>
                   </div>
-                </div>
-              )}
-
-              {/* Seção: Histórico de Pagamentos */}
-              {pagamentos.length > 0 && (
-                <div>
-                  <div className="flex items-center gap-2 mb-4">
-                    <CreditCard className="h-5 w-5 text-orange-400" />
-                    <h2 className="text-xl font-bold text-white">Histórico de Pagamentos</h2>
-                  </div>
-
-                  <div className="space-y-2">
-                    {pagamentos.map((pagamento) => {
-                      const metodoPagamento = {
-                        cash: "Dinheiro",
-                        transfer: "Transferência",
-                        multicaixa: "Multicaixa",
-                      }[pagamento.paymentMethod]
-
-                      const realStatus = getRealStatus(pagamento)
-                      const statusPagamento = {
-                        pending: "Pendente",
-                        partial: "Parcial",
-                        completed: "Pago",
-                        cancelled: "Cancelado",
-                      }[realStatus]
-
-                      const statusColor = {
-                        pending: "secondary",
-                        partial: "default",
-                        completed: "default",
-                        cancelled: "destructive",
-                      }[realStatus] as any
+                ) : (
+                  <div className="space-y-4">
+                    {matriculas.map((matricula) => {
+                      const formacao = formacoesMap[matricula.formacaoId]
+                      const turma = turmasMap[matricula.turmaId]
+                      const pagamentosList = pagamentosMap[matricula.id] || []
+                      
+                      console.log(`[DetalhesAluno-Render] Matrícula ${matricula.id.substring(0, 8)}... tem ${pagamentosList.length} pagamentos`)
 
                       return (
-                        <div key={pagamento.id} className="border border-blue-700/50 rounded-lg p-3 bg-blue-900/10 hover:bg-blue-900/20 transition-colors">
-                          <Separator className="my-2 bg-blue-700/30" />
-                          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-5 gap-3 text-xs">
-                            <div>
-                              <p className="text-blue-400 font-semibold">Valor</p>
-                              <p className="font-bold text-orange-400">{pagamento.amount.toLocaleString("pt-AO")} Kz</p>
-                            </div>
-                            <div>
-                              <p className="text-blue-400 font-semibold">Data</p>
-                              <p className="text-blue-200">{new Date(pagamento.createdAt).toLocaleDateString("pt-AO")}</p>
-                            </div>
-                            <div>
-                              <p className="text-blue-400 font-semibold">Método</p>
-                              <p className="text-blue-200">{metodoPagamento}</p>
-                            </div>
-                            <div>
-                              <p className="text-blue-400 font-semibold">Prestações</p>
-                              <p className="text-blue-200">{getStats(pagamento.id).paidCount}/{pagamento.installments}</p>
-                            </div>
-                            <div>
-                              <p className="text-blue-400 font-semibold">Status</p>
-                              <Badge variant={statusColor} className="bg-orange-500 text-white border-orange-600 w-fit text-xs mt-1">
-                                {statusPagamento}
+                        <div key={matricula.id} className="border border-blue-700/50 rounded-lg p-4 bg-blue-900/10 hover:bg-blue-900/20 transition-colors">
+                          {/* Cabeçalho da Matrícula */}
+                          <div className="mb-4">
+                            <div className="flex items-start justify-between mb-3">
+                              <div>
+                                <h3 className="text-lg font-bold text-white">{formacao?.name || "Formação"}</h3>
+                                <p className="text-sm text-blue-300">{turma?.name || "Turma"}</p>
+                              </div>
+                              <Badge className="bg-green-600/30 text-green-300 border-green-600">
+                                {matricula.status === "active" ? "Ativa" : matricula.status}
                               </Badge>
                             </div>
+                          </div>
+
+                          {/* Informações da Formação e Turma */}
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4 pb-4 border-b border-blue-700/30">
+                            {formacao && (
+                              <>
+                                <div>
+                                  <p className="text-xs font-semibold text-orange-400 uppercase tracking-wide">Categoria</p>
+                                  <p className="text-sm text-blue-200">{formacao.category}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs font-semibold text-orange-400 uppercase tracking-wide">Duração</p>
+                                  <p className="text-sm text-blue-200">{formacao.duration}h</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs font-semibold text-orange-400 uppercase tracking-wide">Valor</p>
+                                  <p className="text-sm font-bold text-orange-400">{formacao.price.toLocaleString("pt-AO")} Kz</p>
+                                </div>
+                              </>
+                            )}
+                            {turma && (
+                              <div>
+                                <p className="text-xs font-semibold text-orange-400 uppercase tracking-wide">Horário</p>
+                                <p className="text-sm text-blue-200">{turma.schedule}</p>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Data de Matrícula */}
+                          <div className="mb-4 flex items-center gap-2 text-sm">
+                            <Calendar className="h-4 w-4 text-orange-400" />
+                            <span className="text-blue-300">
+                              Matriculado em: {new Date(matricula.enrollmentDate).toLocaleDateString("pt-AO")}
+                            </span>
+                          </div>
+
+                          {/* Pagamentos da Matrícula */}
+                          {pagamentosList.length > 0 ? (
+                            <div className="bg-blue-900/20 rounded p-3 mb-4">
+                              <h4 className="text-sm font-semibold text-orange-400 mb-3">Pagamentos</h4>
+                              <div className="space-y-2">
+                                {pagamentosList.map((pagamento) => {
+                                  const metodoPagamento = {
+                                    cash: "Dinheiro",
+                                    transfer: "Transferência",
+                                    multicaixa: "Multicaixa",
+                                  }[pagamento.paymentMethod]
+
+                                  const realStatus = getRealStatus(pagamento)
+                                  const statusPagamento = {
+                                    pending: "Pendente",
+                                    partial: "Parcial",
+                                    completed: "Pago",
+                                    cancelled: "Cancelado",
+                                  }[realStatus]
+
+                                  const statusColor = {
+                                    pending: "secondary",
+                                    partial: "default",
+                                    completed: "default",
+                                    cancelled: "destructive",
+                                  }[realStatus] as any
+
+                                  const stats = getStats(pagamento.id)
+
+                                  return (
+                                    <div key={pagamento.id} className="border border-blue-600/30 rounded p-2 bg-blue-900/30">
+                                      <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
+                                        <div>
+                                          <p className="text-blue-400 font-semibold">Valor</p>
+                                          <p className="font-bold text-orange-400">{pagamento.amount.toLocaleString("pt-AO")} Kz</p>
+                                        </div>
+                                        <div>
+                                          <p className="text-blue-400 font-semibold">Data</p>
+                                          <p className="text-blue-200">{new Date(pagamento.createdAt).toLocaleDateString("pt-AO")}</p>
+                                        </div>
+                                        <div>
+                                          <p className="text-blue-400 font-semibold">Método</p>
+                                          <p className="text-blue-200">{metodoPagamento}</p>
+                                        </div>
+                                        <div>
+                                          <p className="text-blue-400 font-semibold">Prestações</p>
+                                          <p className="text-blue-200">{stats.paidCount}/{pagamento.installments}</p>
+                                        </div>
+                                        <div>
+                                          <p className="text-blue-400 font-semibold">Status</p>
+                                          <Badge variant={statusColor} className="bg-orange-500 text-white border-orange-600 w-fit text-xs mt-1">
+                                            {statusPagamento}
+                                          </Badge>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="bg-blue-900/20 rounded p-3 mb-4 border border-dashed border-blue-600">
+                              <p className="text-sm text-blue-300">Nenhum pagamento registrado para esta matrícula</p>
+                            </div>
+                          )}
+
+                          {/* Botão de Download PDF */}
+                          <div className="flex justify-end">
+                            <Button
+                              onClick={() => handleDownloadPDF(matricula)}
+                              variant="outline"
+                              size="sm"
+                              className="border-green-600 text-green-300 hover:bg-green-600 hover:text-white hover:border-green-600"
+                            >
+                              <Download className="h-4 w-4 mr-2" />
+                              Ficha da Matrícula
+                            </Button>
                           </div>
                         </div>
                       )
                     })}
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>

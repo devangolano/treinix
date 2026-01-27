@@ -91,8 +91,8 @@ export default function EditarAlunoPage() {
           address: aluno.address,
           birthDate: birthDateFormatted,
           status: aluno.status,
-          formacaoId: aluno.formacaoId || "",
-          turmaId: aluno.turmaId || "",
+          formacaoId: "",
+          turmaId: "",
         })
       } else {
         console.warn("[EditarAluno] Aluno não encontrado!")

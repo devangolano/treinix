@@ -127,8 +127,6 @@ CREATE INDEX IF NOT EXISTS idx_turmas_start_date ON turmas(start_date);
 CREATE TABLE IF NOT EXISTS alunos (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   centro_id UUID NOT NULL REFERENCES centros(id) ON DELETE CASCADE,
-  formacao_id UUID REFERENCES formacoes(id) ON DELETE SET NULL,
-  turma_id UUID REFERENCES turmas(id) ON DELETE SET NULL,
   name VARCHAR(255) NOT NULL,
   email VARCHAR(255) NOT NULL,
   phone VARCHAR(50) NOT NULL,
@@ -143,11 +141,36 @@ CREATE TABLE IF NOT EXISTS alunos (
 
 -- Índices
 CREATE INDEX IF NOT EXISTS idx_alunos_centro_id ON alunos(centro_id);
-CREATE INDEX IF NOT EXISTS idx_alunos_formacao_id ON alunos(formacao_id);
-CREATE INDEX IF NOT EXISTS idx_alunos_turma_id ON alunos(turma_id);
 CREATE INDEX IF NOT EXISTS idx_alunos_status ON alunos(status);
 CREATE INDEX IF NOT EXISTS idx_alunos_email ON alunos(email);
 CREATE INDEX IF NOT EXISTS idx_alunos_bi ON alunos(bi);
+
+-- ============================================
+-- TABELA: matriculas
+-- Matrículas dos alunos em formações/turmas (suporta múltiplas matrículas por aluno)
+-- ============================================
+CREATE TABLE IF NOT EXISTS matriculas (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  aluno_id UUID NOT NULL REFERENCES alunos(id) ON DELETE CASCADE,
+  centro_id UUID NOT NULL REFERENCES centros(id) ON DELETE CASCADE,
+  formacao_id UUID NOT NULL REFERENCES formacoes(id) ON DELETE RESTRICT,
+  turma_id UUID NOT NULL REFERENCES turmas(id) ON DELETE RESTRICT,
+  status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'completed', 'cancelled')),
+  enrollment_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  completion_date TIMESTAMP WITH TIME ZONE,
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  CONSTRAINT unique_aluno_formacao_turma UNIQUE(aluno_id, formacao_id, turma_id)
+);
+
+-- Índices para matriculas
+CREATE INDEX IF NOT EXISTS idx_matriculas_aluno_id ON matriculas(aluno_id);
+CREATE INDEX IF NOT EXISTS idx_matriculas_centro_id ON matriculas(centro_id);
+CREATE INDEX IF NOT EXISTS idx_matriculas_formacao_id ON matriculas(formacao_id);
+CREATE INDEX IF NOT EXISTS idx_matriculas_turma_id ON matriculas(turma_id);
+CREATE INDEX IF NOT EXISTS idx_matriculas_status ON matriculas(status);
+CREATE INDEX IF NOT EXISTS idx_matriculas_aluno_status ON matriculas(aluno_id, status);
 
 -- ============================================
 -- TABELA: pagamentos
@@ -157,6 +180,7 @@ CREATE TABLE IF NOT EXISTS pagamentos (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   centro_id UUID NOT NULL REFERENCES centros(id) ON DELETE CASCADE,
   aluno_id UUID NOT NULL REFERENCES alunos(id) ON DELETE CASCADE,
+  matricula_id UUID REFERENCES matriculas(id) ON DELETE CASCADE,
   turma_id UUID NOT NULL REFERENCES turmas(id) ON DELETE CASCADE,
   amount DECIMAL(12, 2) NOT NULL,
   installments INTEGER NOT NULL CHECK (installments IN (1, 2)),
@@ -170,6 +194,7 @@ CREATE TABLE IF NOT EXISTS pagamentos (
 -- Índices
 CREATE INDEX IF NOT EXISTS idx_pagamentos_centro_id ON pagamentos(centro_id);
 CREATE INDEX IF NOT EXISTS idx_pagamentos_aluno_id ON pagamentos(aluno_id);
+CREATE INDEX IF NOT EXISTS idx_pagamentos_matricula_id ON pagamentos(matricula_id);
 CREATE INDEX IF NOT EXISTS idx_pagamentos_turma_id ON pagamentos(turma_id);
 CREATE INDEX IF NOT EXISTS idx_pagamentos_status ON pagamentos(status);
 
@@ -426,6 +451,25 @@ CREATE POLICY "Qualquer usuário pode criar alunos" ON alunos
   WITH CHECK (true);
 
 -- ============================================
+-- POLÍTICAS RLS: matriculas
+-- ============================================
+
+-- Super Admin: ver todas as matrículas
+CREATE POLICY "Super admin vê todas as matrículas" ON matriculas
+  FOR SELECT
+  USING (get_user_role(auth.jwt() ->> 'email') = 'super_admin');
+
+-- Centro: gerenciar suas matrículas
+CREATE POLICY "Centro gerencia suas matrículas" ON matriculas
+  FOR ALL
+  USING (centro_id = get_user_centro_id(auth.jwt() ->> 'email'));
+
+-- Qualquer usuário autenticado pode criar matrículas
+CREATE POLICY "Qualquer usuário pode criar matrículas" ON matriculas
+  FOR INSERT
+  WITH CHECK (true);
+
+-- ============================================
 -- POLÍTICAS RLS: pagamentos
 -- ============================================
 
@@ -514,7 +558,19 @@ GROUP BY c.id, c.name;
 -- View: Alunos com status de pagamento
 CREATE OR REPLACE VIEW alunos_with_payment_status AS
 SELECT 
-  a.*,
+  a.id,
+  a.centro_id,
+  a.name,
+  a.email,
+  a.phone,
+  a.bi,
+  a.address,
+  a.birth_date,
+  a.status,
+  a.created_at,
+  a.updated_at,
+  m.formacao_id,
+  m.turma_id,
   f.name as formacao_name,
   t.name as turma_name,
   p.amount as payment_amount,
@@ -522,11 +578,39 @@ SELECT
   p.installments_paid,
   p.status as payment_status,
   p.payment_method,
-  (p.amount - (p.amount / p.installments * p.installments_paid)) as amount_remaining
+  (p.amount - (p.amount / NULLIF(p.installments, 0) * p.installments_paid)) as amount_remaining
 FROM alunos a
-LEFT JOIN formacoes f ON a.formacao_id = f.id
-LEFT JOIN turmas t ON a.turma_id = t.id
-LEFT JOIN pagamentos p ON a.id = p.aluno_id;
+LEFT JOIN matriculas m ON a.id = m.aluno_id AND m.status = 'active'
+LEFT JOIN formacoes f ON m.formacao_id = f.id
+LEFT JOIN turmas t ON m.turma_id = t.id
+LEFT JOIN pagamentos p ON m.id = p.matricula_id;
+
+-- ============================================
+-- VIEW: Alunos com suas matrículas ativas
+-- ============================================
+CREATE OR REPLACE VIEW alunos_com_matriculas AS
+SELECT 
+  a.id as aluno_id,
+  a.centro_id,
+  a.name,
+  a.email,
+  a.phone,
+  a.bi,
+  a.address,
+  a.birth_date,
+  a.status,
+  m.id as matricula_id,
+  m.formacao_id,
+  m.turma_id,
+  f.name as formacao_name,
+  t.name as turma_name,
+  m.status as matricula_status,
+  m.enrollment_date
+FROM alunos a
+LEFT JOIN matriculas m ON a.id = m.aluno_id AND m.status = 'active'
+LEFT JOIN formacoes f ON m.formacao_id = f.id
+LEFT JOIN turmas t ON m.turma_id = t.id
+ORDER BY a.created_at DESC;
 
 -- ============================================
 -- COMENTÁRIOS NAS TABELAS

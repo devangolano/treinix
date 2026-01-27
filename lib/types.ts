@@ -64,10 +64,28 @@ export interface Aluno {
   address: string
   birthDate: Date
   status: "active" | "inactive"
-  turmaId?: string
-  formacaoId?: string
   createdAt: Date
   updatedAt: Date
+}
+
+// Tipos de Matrícula
+export interface Matricula {
+  id: string
+  alunoId: string
+  centroId: string
+  formacaoId: string
+  turmaId: string
+  status: "active" | "inactive" | "completed" | "cancelled"
+  enrollmentDate: Date
+  completionDate?: Date
+  notes?: string
+  createdAt: Date
+  updatedAt: Date
+}
+
+// Tipo para Aluno com Matrículas (usado em listagens)
+export interface AlunoComMatriculas extends Aluno {
+  matriculas: Matricula[]
 }
 
 // Tipos de Turma
@@ -91,6 +109,7 @@ export interface Pagamento {
   id: string
   centroId: string
   alunoId: string
+  matriculaId: string
   turmaId: string
   amount: number
   installments: 1 | 2

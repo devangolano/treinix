@@ -28,6 +28,7 @@ import { generateAlunoPDF } from "@/lib/pdf-generator"
 import type { Aluno, Formacao, Turma, Pagamento, Centro } from "@/lib/types"
 import { Spinner } from "@/components/ui/spinner"
 import Link from "next/link"
+import { Pagination } from "@/components/pagination"
 
 export default function AlunosPage() {
   const router = useRouter()
@@ -39,10 +40,11 @@ export default function AlunosPage() {
   const [centro, setCentro] = useState<Centro | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
-  const [formacaoFilter, setFormacaoFilter] = useState<string>("all")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [installmentStats, setInstallmentStats] = useState<Record<string, { paidCount: number; totalCount: number; percentage: number }>>({})
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage] = useState(10)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -149,27 +151,11 @@ export default function AlunosPage() {
     }
   }
 
-  const getFormacaoName = (id?: string) => {
-    if (!id) return "-"
-    return formacoes.find((f) => f.id === id)?.name || "-"
-  }
-
-  const getTurmaName = (id?: string) => {
-    if (!id) return "-"
-    return turmas.find((t) => t.id === id)?.name || "-"
-  }
-
   const getPaymentStatus = (alunoId: string) => {
-    const pagamento = pagamentos.find((p) => p.alunoId === alunoId)
-    if (!pagamento) return null
-
-    return {
-      amount: pagamento.amount,
-      status: pagamento.status,
-      installments: pagamento.installments,
-      installmentsPaid: pagamento.installmentsPaid,
-      id: pagamento.id,
-    }
+    // Como agora os pagamentos estão vinculados às matrículas,
+    // não podemos buscar diretamente pelo aluno ID
+    // Isso deve ser feito via matrículas
+    return null
   }
 
   const getStats = (pagamentoId: string) => {
@@ -193,10 +179,20 @@ export default function AlunosPage() {
       aluno.bi.includes(searchTerm)
 
     const matchesStatus = statusFilter === "all" || aluno.status === statusFilter
-    const matchesFormacao = formacaoFilter === "all" || aluno.formacaoId === formacaoFilter
 
-    return matchesSearch && matchesStatus && matchesFormacao
+    return matchesSearch && matchesStatus
   })
+
+  // Cálculo de paginação
+  const totalPages = Math.ceil(filteredAlunos.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const paginatedAlunos = filteredAlunos.slice(startIndex, endIndex)
+
+  // Reset página quando filtros mudam
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, statusFilter])
 
   const handleDelete = async (id: string) => {
     if (!confirm("Tem certeza que deseja excluir este aluno?")) return
@@ -212,24 +208,9 @@ export default function AlunosPage() {
 
   const handleDownloadFicha = async (aluno: Aluno) => {
     try {
-      const formacao = formacoes.find((f) => f.id === aluno.formacaoId)
-      const turma = turmas.find((t) => t.id === aluno.turmaId)
-      const pagamento = pagamentos.find((p) => p.alunoId === aluno.id)
-
-      if (!formacao || !turma) {
-        toast({ title: "Erro", description: "Formação ou turma não encontrada", variant: "destructive" })
-        return
-      }
-
-      // Converter status de pagamento
-      let paymentStatus: "paid" | "half-paid" | "pending" = "pending"
-      if (pagamento) {
-        if (pagamento.status === "completed") {
-          paymentStatus = "paid"
-        } else if (pagamento.status === "partial") {
-          paymentStatus = "half-paid"
-        }
-      }
+      // Como os pagamentos agora estão vinculados a matrículas,
+      // vamos apenas gerar a ficha do aluno sem dados de matrícula
+      // O usuário pode acessar a página de detalhes para gerar ficha de matrícula específica
 
       // Converter método de pagamento para formato legível
       const paymentMethodMap: Record<string, string> = {
@@ -245,24 +226,18 @@ export default function AlunosPage() {
         bi: aluno.bi,
         birthDate: aluno.birthDate,
         address: aluno.address,
-        formacaoName: formacao.name,
-        turmaName: turma.name,
         status: aluno.status,
         createdAt: aluno.createdAt,
         centroName: centro?.name,
         centroEmail: centro?.email,
         centroPhone: centro?.phone,
         centroAddress: centro?.address,
-        paymentMethod: pagamento ? paymentMethodMap[pagamento.paymentMethod] || pagamento.paymentMethod : undefined,
-        paymentStatus: pagamento ? paymentStatus : "pending",
-        installmentsPaid: pagamento?.installmentsPaid,
-        totalInstallments: pagamento?.installments,
         systemPhone: "948324028",
       })
 
       toast({ title: "Ficha baixada com sucesso!", description: `${aluno.name}.pdf` })
     } catch (error) {
-      console.error("Erro ao gerar PDF:", error)
+      console.error("[AlunosList] Erro ao gerar PDF:", error)
       toast({ title: "Erro ao gerar PDF", variant: "destructive" })
     }
   }
@@ -300,8 +275,7 @@ export default function AlunosPage() {
             </Link>
           </div>
 
-          <Card className="mb-6 bg-blue-900/30 border-blue-800">
-            <CardContent className="pt-6">
+            <CardContent className="p-4">
               <div className="flex flex-col md:flex-row gap-4">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-blue-400" />
@@ -312,35 +286,19 @@ export default function AlunosPage() {
                     className="pl-9 bg-blue-800/40 border-blue-700 text-white placeholder:text-blue-300 focus:border-orange-500 focus:ring-orange-500"
                   />
                 </div>
-                <div className="flex gap-3">
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-35 bg-blue-800/40 border-blue-700 text-white">
-                      <Filter className="h-4 w-4 mr-2" />
-                      <SelectValue placeholder="Status" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-blue-900 border-blue-800">
-                      <SelectItem value="all">Todos Status</SelectItem>
-                      <SelectItem value="active">Ativos</SelectItem>
-                      <SelectItem value="inactive">Inativos</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select value={formacaoFilter} onValueChange={setFormacaoFilter}>
-                    <SelectTrigger className="w-40 bg-blue-800/40 border-blue-700 text-white">
-                      <GraduationCap className="h-4 w-4 mr-2" />
-                      <SelectValue placeholder="Formação" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-blue-900 border-blue-800">
-                      <SelectItem value="all">Todas Formações</SelectItem>
-                      {formacoes.map((formacao) => (
-                        <SelectItem key={formacao.id} value={formacao.id}>
-                          {formacao.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-40 bg-blue-800/40 border-blue-700 text-white">
+                    <Filter className="h-4 w-4 mr-2" />
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-blue-900 border-blue-800">
+                    <SelectItem value="all">Todos Status</SelectItem>
+                    <SelectItem value="active">Ativos</SelectItem>
+                    <SelectItem value="inactive">Inativos</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="mt-4 text-sm text-blue-300">
+              <div className="mt-3 text-sm text-blue-300">
                 {filteredAlunos.length === alunos.length ? (
                   <span>{alunos.length} aluno(s) no total</span>
                 ) : (
@@ -350,7 +308,6 @@ export default function AlunosPage() {
                 )}
               </div>
             </CardContent>
-          </Card>
 
           <Card className="bg-blue-900/30 border-blue-800">
             <CardContent className="pt-6">
@@ -363,7 +320,6 @@ export default function AlunosPage() {
                       <TableHead className="text-blue-100 font-semibold">Email</TableHead>
                       <TableHead className="text-blue-100 font-semibold">Telefone</TableHead>
                       <TableHead className="text-blue-100 font-semibold">BI</TableHead>
-                      <TableHead className="text-blue-100 font-semibold">Formação</TableHead>
                       <TableHead className="text-blue-100 font-semibold">Status</TableHead>
                       <TableHead className="text-blue-100 font-semibold">Ações</TableHead>
                     </TableRow>
@@ -378,13 +334,12 @@ export default function AlunosPage() {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredAlunos.map((aluno) => (
+                      paginatedAlunos.map((aluno) => (
                         <TableRow key={aluno.id} className="border-blue-700 hover:bg-blue-900/30 transition-colors">
                           <TableCell className="text-white font-medium">{aluno.name}</TableCell>
                           <TableCell className="text-blue-200">{aluno.email}</TableCell>
                           <TableCell className="text-blue-200">{aluno.phone}</TableCell>
                           <TableCell className="text-blue-200">{aluno.bi}</TableCell>
-                          <TableCell className="text-blue-200">{getFormacaoName(aluno.formacaoId)}</TableCell>
                           <TableCell>
                             <Badge 
                               variant={aluno.status === "active" ? "default" : "secondary"} 
@@ -415,13 +370,19 @@ export default function AlunosPage() {
                                   Baixar PDF
                                 </DropdownMenuItem>
                                 <DropdownMenuItem asChild className="hover:bg-blue-800">
+                                  <Link href={`/dashboard/alunos/${aluno.id}/nova-matricula`} className="flex items-center cursor-pointer text-orange-400">
+                                    <GraduationCap className="h-4 w-4 mr-2" />
+                                    Matricular
+                                  </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild className="hover:bg-blue-800">
                                   <Link href={`/dashboard/alunos/${aluno.id}/editar`} className="flex items-center cursor-pointer text-blue-100">
                                     <Pencil className="h-4 w-4 mr-2" />
                                     Editar
                                   </Link>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem 
-                                  onClick={() => handleDelete(aluno.id)}
+                                  onClick={() => handleDeleteAluno(aluno.id)}
                                   className="hover:bg-red-900/30 text-red-400 cursor-pointer"
                                 >
                                   <Trash2 className="h-4 w-4 mr-2" />
@@ -437,6 +398,18 @@ export default function AlunosPage() {
                 </Table>
               </div>
 
+              {/* Paginação Desktop */}
+              {filteredAlunos.length > 0 && (
+                <div className="hidden md:block mt-4 border-t border-blue-700 pt-4">
+                  <Pagination 
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                    itemsPerPage={itemsPerPage}
+                  />
+                </div>
+              )}
+
               {/* Exibição Mobile - Cards */}
               <div className="md:hidden space-y-3">
                 {filteredAlunos.length === 0 ? (
@@ -446,7 +419,7 @@ export default function AlunosPage() {
                       : "Nenhum aluno encontrado com os filtros aplicados"}
                   </div>
                 ) : (
-                  filteredAlunos.map((aluno) => (
+                  paginatedAlunos.map((aluno) => (
                     <Card key={aluno.id} className="bg-blue-800/40 border-blue-700 hover:border-orange-500 transition-colors">
                       <CardContent className="pt-4 pb-4">
                         <div className="space-y-3">
@@ -474,11 +447,6 @@ export default function AlunosPage() {
                             </div>
                           </div>
 
-                          <div>
-                            <p className="text-xs text-blue-400">Formação</p>
-                            <p className="text-blue-200">{getFormacaoName(aluno.formacaoId)}</p>
-                          </div>
-
                           <div className="flex gap-2 border-t border-blue-700 pt-3">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
@@ -502,13 +470,19 @@ export default function AlunosPage() {
                                   PDF
                                 </DropdownMenuItem>
                                 <DropdownMenuItem asChild className="hover:bg-blue-800">
+                                  <Link href={`/dashboard/alunos/${aluno.id}/nova-matricula`} className="flex items-center cursor-pointer text-orange-400">
+                                    <GraduationCap className="h-4 w-4 mr-2" />
+                                    Matricular
+                                  </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild className="hover:bg-blue-800">
                                   <Link href={`/dashboard/alunos/${aluno.id}/editar`} className="flex items-center cursor-pointer text-blue-100">
                                     <Pencil className="h-4 w-4 mr-2" />
                                     Editar
                                   </Link>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem 
-                                  onClick={() => handleDelete(aluno.id)}
+                                  onClick={() => handleDeleteAluno(aluno.id)}
                                   className="hover:bg-red-900/30 text-red-400 cursor-pointer"
                                 >
                                   <Trash2 className="h-4 w-4 mr-2" />
@@ -523,6 +497,18 @@ export default function AlunosPage() {
                   ))
                 )}
               </div>
+
+              {/* Paginação Mobile */}
+              {filteredAlunos.length > 0 && (
+                <div className="md:hidden mt-4 border-t border-blue-700 pt-4">
+                  <Pagination 
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                    itemsPerPage={itemsPerPage}
+                  />
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

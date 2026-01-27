@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { alunoService, formacaoService, turmaService, pagamentoService, pagamentoInstallmentService } from "@/lib/supabase-services"
+import { alunoService, formacaoService, turmaService, matriculaService, pagamentoService, pagamentoInstallmentService } from "@/lib/supabase-services"
 import { CentroSidebar } from "@/components/centro-sidebar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -27,7 +27,6 @@ export default function NovoAlunoPage() {
   const [formacoes, setFormacoes] = useState<Formacao[]>([])
   const [turmas, setTurmas] = useState<Turma[]>([])
   const [loading, setLoading] = useState(false)
-  const { toast } = useToast()
 
   const [formData, setFormData] = useState({
     name: "",
@@ -71,7 +70,6 @@ export default function NovoAlunoPage() {
       setTurmas(turmasData)
     } catch (error) {
       console.error("Erro ao carregar dados:", error)
-      toast({ title: "Erro ao carregar dados", variant: "destructive" })
     }
   }
 
@@ -85,25 +83,18 @@ export default function NovoAlunoPage() {
     e.preventDefault()
     
     if (!currentUser?.centroId) {
-      toast({ title: "Erro", description: "Centro não identificado", variant: "destructive" })
+      alert("Centro não identificado")
       return
     }
 
-    // Validação básica
-    if (!formData.name || !formData.email || !formData.turmaId || !formData.formacaoId) {
-      toast({ title: "Erro", description: "Preencha todos os campos obrigatórios", variant: "destructive" })
+    // Validação básica - formação e turma são opcionais
+    if (!formData.name || !formData.email || !formData.bi || !formData.birthDate || !formData.address) {
+      alert("Preencha todos os dados pessoais obrigatórios")
       return
     }
 
     setLoading(true)
     try {
-      const price = getFormacaoPrice(formData.formacaoId)
-      if (price <= 0) {
-        toast({ title: "Erro", description: "Formação não encontrada ou preço inválido", variant: "destructive" })
-        setLoading(false)
-        return
-      }
-
       console.log("1. Criando aluno...")
       const novoAluno = await alunoService.create({
         centroId: currentUser.centroId,
@@ -114,107 +105,138 @@ export default function NovoAlunoPage() {
         address: formData.address,
         birthDate: new Date(formData.birthDate),
         status: formData.status,
-        formacaoId: formData.formacaoId,
-        turmaId: formData.turmaId,
       })
 
       if (!novoAluno?.id) {
         console.error("Falha na criação do aluno")
-        toast({ title: "Erro ao cadastrar aluno", variant: "destructive" })
+        alert("Não foi possível criar o aluno. Verifique os dados e tente novamente.")
         setLoading(false)
         return
       }
 
       console.log("2. Aluno criado:", novoAluno.id)
-      console.log("3. Criando pagamento...")
 
-      // Criar pagamento
-      const installmentCount = Number(paymentData.installments) as 1 | 2
+      // Se não há formação selecionada, apenas criar o aluno e voltar
+      if (!formData.formacaoId || !formData.turmaId) {
+        alert("Aluno cadastrado com sucesso! Você pode adicionar matrículas depois.")
+        router.push("/dashboard/alunos")
+        return
+      }
 
-      const novoPagamento = await pagamentoService.create({
-        centroId: currentUser.centroId,
-        alunoId: novoAluno.id,
-        turmaId: formData.turmaId,
-        amount: price,
-        installments: installmentCount,
-        installmentsPaid: 0,
-        paymentMethod: paymentData.paymentMethod,
-        status: "pending",
-      })
-
-      if (!novoPagamento?.id) {
-        console.error("Falha na criação do pagamento")
-        toast({ title: "Erro ao criar pagamento", variant: "destructive" })
+      console.log("3. Criando matrícula e pagamento...")
+      
+      const price = getFormacaoPrice(formData.formacaoId)
+      if (price <= 0) {
+        alert("Formação não encontrada ou preço inválido")
         setLoading(false)
         return
       }
 
-      console.log("4. Pagamento criado:", novoPagamento.id)
-      console.log("5. Criando prestações...")
+      // Criar matrícula
+      const matricula = await matriculaService.create({
+        alunoId: novoAluno.id,
+        centroId: currentUser.centroId,
+        formacaoId: formData.formacaoId,
+        turmaId: formData.turmaId,
+        status: "active",
+        enrollmentDate: new Date(),
+      })
+
+      if (!matricula?.id) {
+        throw new Error("Erro ao criar matrícula")
+      }
+
+      // Criar pagamento
+      const installmentAmount = price / parseInt(paymentData.installments)
+
+      console.log("📋 Dados do pagamento antes de criar:", {
+        paymentMethod: paymentData.paymentMethod,
+        installments: paymentData.installments,
+        amount: price,
+      })
+
+      const pagamento = await pagamentoService.create({
+        centroId: currentUser.centroId,
+        alunoId: novoAluno.id,
+        matriculaId: matricula.id,
+        turmaId: formData.turmaId,
+        amount: price,
+        installments: parseInt(paymentData.installments) as 1 | 2,
+        installmentsPaid: 0,
+        status: "pending",
+        paymentMethod: paymentData.paymentMethod,
+      })
+
+      if (!pagamento?.id) {
+        throw new Error("Erro ao criar pagamento")
+      }
+
+      console.log("4. Criando prestações...")
 
       // Criar prestações
       const dataInicio = new Date()
-      const installmentsCreated = await pagamentoInstallmentService.createBatch(
-        novoPagamento.id,
-        installmentCount,
+      await pagamentoInstallmentService.createBatch(
+        pagamento.id,
+        parseInt(paymentData.installments),
         price,
         dataInicio
       )
 
-      if (!installmentsCreated) {
-        console.error("Falha na criação das prestações")
-        toast({ title: "Erro ao criar prestações", variant: "destructive" })
-        setLoading(false)
-        return
-      }
+      console.log("5. Marcando primeira prestação como paga...")
 
-      console.log("6. Prestações criadas com sucesso")
+      // Obter prestações criadas e marcar a primeira como paga (pagamento na matrícula)
+      const installments = await pagamentoInstallmentService.getByPagamentoId(pagamento.id)
+      if (installments.length > 0) {
+        const firstInstallment = installments[0]
+        await pagamentoInstallmentService.markAsPaid(firstInstallment.id)
+        console.log("✓ Primeira prestação marcada como paga:", firstInstallment.id)
 
-      // Se for pagamento à vista, marcar prestação como paga automaticamente
-      if (installmentCount === 1) {
-        console.log("7. Processando pagamento à vista...")
-        
-        // Obter a prestação criada
-        const installments = await pagamentoInstallmentService.getByPagamentoId(novoPagamento.id)
-        
-        if (installments && installments.length > 0) {
-          console.log("7a. Marcando prestação como paga...")
-          // Marcar primeira prestação como paga
-          await pagamentoInstallmentService.markAsPaid(installments[0].id)
-          
-          // Atualizar pagamento para completed
-          console.log("7b. Atualizando status do pagamento...")
-          await pagamentoService.update(novoPagamento.id, {
+        // Se for à vista (1 prestação), marcar pagamento como completo
+        if (parseInt(paymentData.installments) === 1) {
+          await pagamentoService.update(pagamento.id, {
             status: "completed",
             installmentsPaid: 1,
           })
+          console.log("✓ Pagamento marcado como completo (à vista)")
+        } else {
+          // Se for 2 prestações, marcar como partial
+          await pagamentoService.update(pagamento.id, {
+            status: "partial",
+            installmentsPaid: 1,
+          })
+          console.log("✓ Pagamento marcado como parcial (1 de 2 prestações)")
         }
-        
-        toast({
-          title: "Aluno cadastrado com sucesso!",
-          description: "Pagamento registrado à vista.",
-        })
-        
-        setLoading(false)
-        setTimeout(() => {
-          console.log("8. Redirecionando para lista de alunos...")
-          router.push("/dashboard/alunos")
-        }, 500)
-      } else {
-        // Se for 2 prestações, abrir dialog de pagamento obrigatório
-        console.log("7. Abrindo dialog de pagamento...")
-        setPaymentDialog({
-          open: true,
-          alunoData: novoAluno,
-          pagamentoId: novoPagamento.id,
-          installmentAmount: price / 2,
-        })
-        setLoading(false)
       }
-    } catch (error) {
-      console.error("Erro ao cadastrar aluno:", error)
-      toast({ title: "Erro ao cadastrar aluno", description: String(error), variant: "destructive" })
+
+      // Disparar evento para recarregar dados nas outras páginas
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("pagamento:created"))
+        console.log("✨ Evento 'pagamento:created' disparado")
+      }
+
+      alert("Aluno e matrícula criados com sucesso!")
       setLoading(false)
+      setTimeout(() => {
+        console.log("6. Redirecionando para lista de alunos...")
+        router.push("/dashboard/alunos")
+      }, 500)
+    } catch (error: any) {
+      console.error("Erro ao cadastrar aluno:", error)
+      setLoading(false)
+      
+      // Verificar tipo de erro
+      let errorMessage = "Ocorreu um erro ao tentar cadastrar o aluno. Tente novamente."
+
+      if (error?.message === "BI_ALREADY_EXISTS" || error?.toString().includes("BI_ALREADY_EXISTS")) {
+        errorMessage = "Este BI já está registrado neste centro. Por favor, verifique os dados."
+      } else if (error instanceof Error) {
+        errorMessage = error.message
+      } else if (typeof error === "string") {
+        errorMessage = error
+      }
+
+      console.log("⚠️ Alertando usuário:", errorMessage)
+      alert(errorMessage)
     }
   }
 
@@ -230,7 +252,7 @@ export default function NovoAlunoPage() {
       })
 
       if (!pagamentoAtualizado) {
-        toast({ title: "Erro ao processar pagamento", variant: "destructive" })
+        alert("Erro ao processar pagamento")
         setPaymentLoading(false)
         return
       }
@@ -241,10 +263,7 @@ export default function NovoAlunoPage() {
         await pagamentoInstallmentService.markAsPaid(installments[0].id)
       }
 
-      toast({
-        title: "Primeira prestação paga com sucesso!",
-        description: "Aluno cadastrado e primeira parcela registrada.",
-      })
+      alert("Primeira prestação paga com sucesso! Aluno cadastrado e primeira parcela registrada.")
 
       setPaymentDialog({ open: false, alunoData: null, pagamentoId: null, installmentAmount: 0 })
       setPaymentLoading(false)
@@ -253,7 +272,7 @@ export default function NovoAlunoPage() {
   setTimeout(() => router.push("/dashboard/alunos"), 500)
     } catch (error) {
       console.error("Erro ao processar pagamento:", error)
-      toast({ title: "Erro ao processar pagamento", variant: "destructive" })
+      alert("Erro ao processar pagamento")
       setPaymentLoading(false)
     }
   }
@@ -378,22 +397,21 @@ export default function NovoAlunoPage() {
                 <Separator className="bg-blue-800" />
 
                 <div className="space-y-4">
-                  <h3 className="font-semibold text-lg text-white">Matrícula</h3>
+                  <h3 className="font-semibold text-lg text-white">Matrícula <span className="text-blue-300 text-sm font-normal">(Opcional - Pode adicionar depois)</span></h3>
 
                   <div className="space-y-2">
-                    <Label htmlFor="formacaoId" className="text-blue-200 font-semibold">Formação</Label>
+                    <Label htmlFor="formacaoId" className="text-blue-200 font-semibold">Formação (Opcional)</Label>
                     <Select
                       value={formData.formacaoId}
                       onValueChange={(value) => setFormData({ ...formData, formacaoId: value, turmaId: "" })}
-                      required
                     >
                       <SelectTrigger className="bg-blue-800/40 border-blue-700 text-white">
-                        <SelectValue placeholder="Selecione uma formação" />
+                        <SelectValue placeholder="Selecione uma formação (opcional)" />
                       </SelectTrigger>
                       <SelectContent className="bg-blue-900 border-blue-800">
                         {formacoes.map((formacao) => (
                           <SelectItem key={formacao.id} value={formacao.id}>
-                            {formacao.name} - {formacao.price.toLocaleString("pt-AO")} Kz
+                            {formacao.name} - AOA {formacao.price.toFixed(2)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -401,15 +419,14 @@ export default function NovoAlunoPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="turmaId" className="text-blue-200 font-semibold">Turma</Label>
+                    <Label htmlFor="turmaId" className="text-blue-200 font-semibold">Turma (Opcional)</Label>
                     <Select
                       value={formData.turmaId}
                       onValueChange={(value) => setFormData({ ...formData, turmaId: value })}
-                      required
                       disabled={!formData.formacaoId}
                     >
                       <SelectTrigger className="bg-blue-800/40 border-blue-700 text-white disabled:opacity-50">
-                        <SelectValue placeholder="Selecione uma turma" />
+                        <SelectValue placeholder="Selecione uma turma (opcional)" />
                       </SelectTrigger>
                       <SelectContent className="bg-blue-900 border-blue-800">
                         {filteredTurmas.length === 0 ? (

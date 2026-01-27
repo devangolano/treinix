@@ -1,5 +1,5 @@
 import { supabase } from "./supabase"
-import type { Centro, Subscription, Formacao, Aluno, Turma, Pagamento, PagamentoInstallment } from "./types"
+import type { Centro, Subscription, Formacao, Aluno, Turma, Pagamento, PagamentoInstallment, Matricula } from "./types"
 
 // ============================================
 // SERVIÇO DE CENTROS
@@ -621,8 +621,6 @@ export const alunoService = {
       const aluno = {
         ...data,
         centroId: data.centro_id,
-        turmaId: data.turma_id,
-        formacaoId: data.formacao_id,
         birthDate: new Date(data.birth_date),
         createdAt: new Date(data.created_at),
         updatedAt: new Date(data.updated_at),
@@ -636,17 +634,35 @@ export const alunoService = {
   },
 
   /**
-   * Cria um novo aluno
+   * Cria um novo aluno (sem matrícula - a matrícula será criada separadamente)
    */
   async create(data: Omit<Aluno, "id" | "createdAt" | "updatedAt">): Promise<Aluno | null> {
     try {
+      // Verificar se BI já existe no centro
+      if (data.bi) {
+        const { data: existingAluno, error: checkError } = await supabase
+          .from("alunos")
+          .select("id, bi")
+          .eq("centro_id", data.centroId)
+          .eq("bi", data.bi)
+          .single()
+
+        if (existingAluno) {
+          console.error("[alunoService.create] BI já registrado:", data.bi)
+          throw new Error("BI_ALREADY_EXISTS")
+        }
+
+        if (checkError && checkError.code !== "PGRST116") {
+          // PGRST116 = "não encontrou nenhuma linha" (esperado se BI não existe)
+          throw checkError
+        }
+      }
+
       const { data: newAluno, error } = await supabase
         .from("alunos")
         .insert([
           {
             centro_id: data.centroId,
-            formacao_id: data.formacaoId,
-            turma_id: data.turmaId,
             name: data.name,
             email: data.email,
             phone: data.phone,
@@ -659,25 +675,30 @@ export const alunoService = {
         .select()
         .single()
 
-      if (error) throw error
+      if (error) {
+        if (error.code === "23505") {
+          // Unique constraint violation
+          console.error("[alunoService.create] Violação de constraint único:", error)
+          throw new Error("BI_ALREADY_EXISTS")
+        }
+        throw error
+      }
 
       return {
         ...newAluno,
         centroId: newAluno.centro_id,
-        turmaId: newAluno.turma_id,
-        formacaoId: newAluno.formacao_id,
         birthDate: new Date(newAluno.birth_date),
         createdAt: new Date(newAluno.created_at),
         updatedAt: new Date(newAluno.updated_at),
       }
     } catch (error) {
-      console.error("Erro ao criar aluno:", error)
-      return null
+      console.error("[alunoService.create] Erro ao criar aluno:", error)
+      throw error
     }
   },
 
   /**
-   * Atualiza um aluno
+   * Atualiza um aluno (apenas dados pessoais)
    */
   async update(id: string, data: Partial<Aluno>): Promise<Aluno | null> {
     try {
@@ -689,8 +710,6 @@ export const alunoService = {
       if (data.address) updateData.address = data.address
       if (data.birthDate) updateData.birth_date = data.birthDate instanceof Date ? data.birthDate.toISOString().split("T")[0] : data.birthDate
       if (data.status) updateData.status = data.status
-      if (data.turmaId) updateData.turma_id = data.turmaId
-      if (data.formacaoId) updateData.formacao_id = data.formacaoId
 
       const { data: updatedAluno, error } = await supabase
         .from("alunos")
@@ -704,8 +723,6 @@ export const alunoService = {
       return {
         ...updatedAluno,
         centroId: updatedAluno.centro_id,
-        turmaId: updatedAluno.turma_id,
-        formacaoId: updatedAluno.formacao_id,
         birthDate: new Date(updatedAluno.birth_date),
         createdAt: new Date(updatedAluno.created_at),
         updatedAt: new Date(updatedAluno.updated_at),
@@ -734,6 +751,206 @@ export const alunoService = {
 }
 
 // ============================================
+// SERVIÇO DE MATRÍCULAS
+// ============================================
+export const matriculaService = {
+  /**
+   * Obtém todas as matrículas de um centro
+   */
+  async getAll(centroId: string): Promise<Matricula[]> {
+    try {
+      const { data, error } = await supabase
+        .from("matriculas")
+        .select("*")
+        .eq("centro_id", centroId)
+        .order("created_at", { ascending: false })
+
+      if (error) throw error
+
+      return (data || []).map((matricula) => ({
+        ...matricula,
+        id: matricula.id,
+        alunoId: matricula.aluno_id,
+        centroId: matricula.centro_id,
+        formacaoId: matricula.formacao_id,
+        turmaId: matricula.turma_id,
+        status: matricula.status,
+        enrollmentDate: new Date(matricula.enrollment_date),
+        completionDate: matricula.completion_date ? new Date(matricula.completion_date) : undefined,
+        notes: matricula.notes,
+        createdAt: new Date(matricula.created_at),
+        updatedAt: new Date(matricula.updated_at),
+      }))
+    } catch (error) {
+      console.error("[matriculaService] Erro ao buscar matrículas:", error)
+      return []
+    }
+  },
+
+  /**
+   * Obtém matrículas de um aluno específico
+   */
+  async getByAlunoId(alunoId: string): Promise<Matricula[]> {
+    try {
+      const { data, error } = await supabase
+        .from("matriculas")
+        .select("*")
+        .eq("aluno_id", alunoId)
+        .order("created_at", { ascending: false })
+
+      if (error) throw error
+
+      return (data || []).map((matricula) => ({
+        ...matricula,
+        id: matricula.id,
+        alunoId: matricula.aluno_id,
+        centroId: matricula.centro_id,
+        formacaoId: matricula.formacao_id,
+        turmaId: matricula.turma_id,
+        status: matricula.status,
+        enrollmentDate: new Date(matricula.enrollment_date),
+        completionDate: matricula.completion_date ? new Date(matricula.completion_date) : undefined,
+        notes: matricula.notes,
+        createdAt: new Date(matricula.created_at),
+        updatedAt: new Date(matricula.updated_at),
+      }))
+    } catch (error) {
+      console.error("[matriculaService] Erro ao buscar matrículas do aluno:", error)
+      return []
+    }
+  },
+
+  /**
+   * Obtém uma matrícula pelo ID
+   */
+  async getById(id: string): Promise<Matricula | null> {
+    try {
+      const { data, error } = await supabase.from("matriculas").select("*").eq("id", id).single()
+
+      if (error) throw error
+
+      if (!data) return null
+
+      return {
+        ...data,
+        id: data.id,
+        alunoId: data.aluno_id,
+        centroId: data.centro_id,
+        formacaoId: data.formacao_id,
+        turmaId: data.turma_id,
+        status: data.status,
+        enrollmentDate: new Date(data.enrollment_date),
+        completionDate: data.completion_date ? new Date(data.completion_date) : undefined,
+        notes: data.notes,
+        createdAt: new Date(data.created_at),
+        updatedAt: new Date(data.updated_at),
+      }
+    } catch (error) {
+      console.error("[matriculaService] Erro ao buscar matrícula:", error)
+      return null
+    }
+  },
+
+  /**
+   * Cria uma nova matrícula
+   */
+  async create(data: Omit<Matricula, "id" | "createdAt" | "updatedAt">): Promise<Matricula | null> {
+    try {
+      const { data: newMatricula, error } = await supabase
+        .from("matriculas")
+        .insert([
+          {
+            aluno_id: data.alunoId,
+            centro_id: data.centroId,
+            formacao_id: data.formacaoId,
+            turma_id: data.turmaId,
+            status: data.status || "active",
+            enrollment_date: new Date().toISOString(),
+            notes: data.notes || null,
+          },
+        ])
+        .select()
+        .single()
+
+      if (error) throw error
+
+      return {
+        ...newMatricula,
+        id: newMatricula.id,
+        alunoId: newMatricula.aluno_id,
+        centroId: newMatricula.centro_id,
+        formacaoId: newMatricula.formacao_id,
+        turmaId: newMatricula.turma_id,
+        status: newMatricula.status,
+        enrollmentDate: new Date(newMatricula.enrollment_date),
+        completionDate: newMatricula.completion_date ? new Date(newMatricula.completion_date) : undefined,
+        notes: newMatricula.notes,
+        createdAt: new Date(newMatricula.created_at),
+        updatedAt: new Date(newMatricula.updated_at),
+      }
+    } catch (error) {
+      console.error("[matriculaService] Erro ao criar matrícula:", error)
+      return null
+    }
+  },
+
+  /**
+   * Atualiza uma matrícula
+   */
+  async update(id: string, data: Partial<Matricula>): Promise<Matricula | null> {
+    try {
+      const updateData: any = {}
+      if (data.status) updateData.status = data.status
+      if (data.completionDate) updateData.completion_date = data.completionDate
+      if (data.notes) updateData.notes = data.notes
+
+      const { data: updatedMatricula, error } = await supabase
+        .from("matriculas")
+        .update(updateData)
+        .eq("id", id)
+        .select()
+        .single()
+
+      if (error) throw error
+
+      return {
+        ...updatedMatricula,
+        id: updatedMatricula.id,
+        alunoId: updatedMatricula.aluno_id,
+        centroId: updatedMatricula.centro_id,
+        formacaoId: updatedMatricula.formacao_id,
+        turmaId: updatedMatricula.turma_id,
+        status: updatedMatricula.status,
+        enrollmentDate: new Date(updatedMatricula.enrollment_date),
+        completionDate: updatedMatricula.completion_date ? new Date(updatedMatricula.completion_date) : undefined,
+        notes: updatedMatricula.notes,
+        createdAt: new Date(updatedMatricula.created_at),
+        updatedAt: new Date(updatedMatricula.updated_at),
+      }
+    } catch (error) {
+      console.error("[matriculaService] Erro ao atualizar matrícula:", error)
+      return null
+    }
+  },
+
+  /**
+   * Deleta uma matrícula
+   */
+  async delete(id: string): Promise<boolean> {
+    try {
+      const { error } = await supabase.from("matriculas").delete().eq("id", id)
+
+      if (error) throw error
+
+      return true
+    } catch (error) {
+      console.error("[matriculaService] Erro ao deletar matrícula:", error)
+      return false
+    }
+  },
+}
+
+// ============================================
 // SERVIÇO DE PAGAMENTOS
 // ============================================
 export const pagamentoService = {
@@ -754,6 +971,7 @@ export const pagamentoService = {
         ...pag,
         centroId: pag.centro_id,
         alunoId: pag.aluno_id,
+        matriculaId: pag.matricula_id,
         turmaId: pag.turma_id,
         installmentsPaid: pag.installments_paid,
         paymentMethod: pag.payment_method,
@@ -785,6 +1003,7 @@ export const pagamentoService = {
         ...data,
         centroId: data.centro_id,
         alunoId: data.aluno_id,
+        matriculaId: data.matricula_id,
         turmaId: data.turma_id,
         installmentsPaid: data.installments_paid,
         paymentMethod: data.payment_method,
@@ -802,12 +1021,18 @@ export const pagamentoService = {
    */
   async create(data: Omit<Pagamento, "id" | "createdAt" | "updatedAt">): Promise<Pagamento | null> {
     try {
+      console.log("[pagamentoService.create] Iniciando criação de pagamento com dados:", {
+        ...data,
+        paymentMethod: data.paymentMethod,
+      })
+      
       const { data: newPag, error } = await supabase
         .from("pagamentos")
         .insert([
           {
             centro_id: data.centroId,
             aluno_id: data.alunoId,
+            matricula_id: data.matriculaId,
             turma_id: data.turmaId,
             amount: data.amount,
             installments: data.installments,
@@ -819,12 +1044,21 @@ export const pagamentoService = {
         .select()
         .single()
 
-      if (error) throw error
+      if (error) {
+        console.error("[pagamentoService.create] Erro ao inserir pagamento:", error)
+        throw error
+      }
+
+      console.log("[pagamentoService.create] ✓ Pagamento criado com sucesso:", {
+        id: newPag.id,
+        payment_method: newPag.payment_method,
+      })
 
       return {
         ...newPag,
         centroId: newPag.centro_id,
         alunoId: newPag.aluno_id,
+        matriculaId: newPag.matricula_id,
         turmaId: newPag.turma_id,
         installmentsPaid: newPag.installments_paid,
         paymentMethod: newPag.payment_method,
@@ -832,7 +1066,7 @@ export const pagamentoService = {
         updatedAt: new Date(newPag.updated_at),
       }
     } catch (error) {
-      console.error("Erro ao criar pagamento:", error)
+      console.error("[pagamentoService.create] Erro geral:", error)
       return null
     }
   },
@@ -860,6 +1094,7 @@ export const pagamentoService = {
         ...updatedPag,
         centroId: updatedPag.centro_id,
         alunoId: updatedPag.aluno_id,
+        matriculaId: updatedPag.matricula_id,
         turmaId: updatedPag.turma_id,
         installmentsPaid: updatedPag.installments_paid,
         paymentMethod: updatedPag.payment_method,
@@ -929,6 +1164,8 @@ export const pagamentoInstallmentService = {
     startDate: Date
   ): Promise<PagamentoInstallment[]> {
     try {
+      console.log("[pagamentoInstallmentService.createBatch] Criando", installments, "prestações para pagamento:", pagamentoId)
+      
       const installmentAmount = totalAmount / installments
       const installmentsData = Array.from({ length: installments }, (_, i) => {
         const dueDate = new Date(startDate)
@@ -943,12 +1180,19 @@ export const pagamentoInstallmentService = {
         }
       })
 
+      console.log("[pagamentoInstallmentService.createBatch] Dados das prestações:", installmentsData)
+
       const { data, error } = await supabase
         .from("pagamento_installments")
         .insert(installmentsData)
         .select()
 
-      if (error) throw error
+      if (error) {
+        console.error("[pagamentoInstallmentService.createBatch] Erro ao inserir prestações:", error)
+        throw error
+      }
+
+      console.log("[pagamentoInstallmentService.createBatch] ✓ Prestações criadas:", data?.length)
 
       return (data || []).map((inst) => ({
         ...inst,
@@ -958,7 +1202,7 @@ export const pagamentoInstallmentService = {
         paidAt: inst.paid_at ? new Date(inst.paid_at) : undefined,
       }))
     } catch (error) {
-      console.error("Erro ao criar prestações:", error)
+      console.error("[pagamentoInstallmentService.createBatch] Erro geral:", error)
       return []
     }
   },

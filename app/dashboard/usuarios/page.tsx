@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, UserCog, Mail, Search, Filter, Trash2, Edit2 } from "lucide-react"
+import { Plus, UserCog, Mail, Search, Filter, Trash2, Edit2, MoreVertical } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import type { User } from "@/lib/types"
 import Link from "next/link"
@@ -24,6 +24,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Pagination } from "@/components/pagination"
 
 interface CentroUser {
   id: string
@@ -49,6 +52,8 @@ export default function UsuariosPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [usuarioADeletar, setUsuarioADeletar] = useState<CentroUser | null>(null)
   const [deletando, setDeletando] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage] = useState(10)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -93,6 +98,17 @@ export default function UsuariosPage() {
 
     return matchesSearch && matchesRole
   })
+
+  // Cálculo de paginação
+  const totalPages = Math.ceil(filteredUsuarios.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const paginatedUsuarios = filteredUsuarios.slice(startIndex, endIndex)
+
+  // Reset página quando filtros mudam
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, roleFilter])
 
   const handleDeleteUsuario = async (usuarioId: string) => {
     const usuario = usuarios.find(u => u.id === usuarioId)
@@ -172,8 +188,7 @@ export default function UsuariosPage() {
             )}
           </div>
 
-          <Card className="mb-6 bg-blue-900/30 border-blue-800">
-            <CardContent className="pt-6">
+            <CardContent className="p-4">
               <div className="flex flex-col md:flex-row gap-4">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-blue-400" />
@@ -196,7 +211,7 @@ export default function UsuariosPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="mt-4 text-sm text-blue-300">
+              <div className="mt-3 text-sm text-blue-300">
                 {filteredUsuarios.length === usuarios.length ? (
                   <span>{usuarios.length} usuário(s) no total</span>
                 ) : (
@@ -206,63 +221,163 @@ export default function UsuariosPage() {
                 )}
               </div>
             </CardContent>
-          </Card>
 
-          <div className="space-y-2">
-            {filteredUsuarios.length === 0 ? (
-              <Card className="bg-blue-900/30 border-blue-800">
-                <CardContent className="py-12 text-center">
-                  <p className="text-blue-300">
+          <Card className="bg-blue-900/30 border-blue-800">
+            <CardContent className="pt-6">
+              {/* Exibição Desktop - Tabela */}
+              <div className="hidden md:block rounded-lg border border-blue-800 overflow-hidden">
+                <Table>
+                  <TableHeader className="bg-blue-800/50">
+                    <TableRow className="hover:bg-blue-800/50 border-blue-700">
+                      <TableHead className="text-blue-100 font-semibold">Nome</TableHead>
+                      <TableHead className="text-blue-100 font-semibold">Email</TableHead>
+                      <TableHead className="text-blue-100 font-semibold">Telefone</TableHead>
+                      <TableHead className="text-blue-100 font-semibold">Função</TableHead>
+                      <TableHead className="text-blue-100 font-semibold">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredUsuarios.length === 0 ? (
+                      <TableRow className="border-blue-700 hover:bg-blue-900/20">
+                        <TableCell colSpan={5} className="text-center text-blue-300 py-8">
+                          {usuarios.length === 0
+                            ? "Nenhum usuário encontrado"
+                            : "Nenhum usuário encontrado com os filtros aplicados"}
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      paginatedUsuarios.map((usuario) => (
+                        <TableRow key={usuario.id} className="border-blue-700 hover:bg-blue-900/30 transition-colors">
+                          <TableCell className="text-white font-medium">{usuario.name}</TableCell>
+                          <TableCell className="text-blue-200">{usuario.email}</TableCell>
+                          <TableCell className="text-blue-200">{usuario.phone || "-"}</TableCell>
+                          <TableCell>
+                            <Badge 
+                              variant={usuario.role === "centro_admin" ? "default" : "secondary"} 
+                              className="bg-orange-500 text-white border-orange-600"
+                            >
+                              {usuario.role === "centro_admin" ? "Admin" : "Secretário"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-blue-200 hover:text-white hover:bg-blue-800">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="bg-blue-900 border-blue-800">
+                                <DropdownMenuItem asChild className="hover:bg-blue-800">
+                                  <button onClick={() => router.push(`/dashboard/usuarios/editar?id=${usuario.id}`)} className="flex items-center cursor-pointer text-blue-100 w-full">
+                                    <Edit2 className="h-4 w-4 mr-2" />
+                                    Editar
+                                  </button>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => handleDeleteUsuario(usuario.id)}
+                                  className="hover:bg-red-900/30 text-red-400 cursor-pointer"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Deletar
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Paginação Desktop */}
+              {filteredUsuarios.length > 0 && (
+                <div className="hidden md:block mt-4 border-t border-blue-700 pt-4">
+                  <Pagination 
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                    itemsPerPage={itemsPerPage}
+                  />
+                </div>
+              )}
+
+              {/* Exibição Mobile - Cards */}
+              <div className="md:hidden space-y-3">
+                {filteredUsuarios.length === 0 ? (
+                  <div className="text-center text-blue-300 py-8">
                     {usuarios.length === 0
                       ? "Nenhum usuário encontrado"
                       : "Nenhum usuário encontrado com os filtros aplicados"}
-                  </p>
-                </CardContent>
-              </Card>
-            ) : (
-              filteredUsuarios.map((usuario) => (
-                <Card key={usuario.id} className="hover:shadow-md transition-shadow bg-blue-900/30 border-blue-800 hover:border-orange-500">
-                  <CardContent className="py-3 px-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-500/20">
-                          <UserCog className="h-5 w-5 text-orange-400" />
+                  </div>
+                ) : (
+                  paginatedUsuarios.map((usuario) => (
+                    <Card key={usuario.id} className="bg-blue-800/40 border-blue-700 hover:border-orange-500 transition-colors">
+                      <CardContent className="pt-4 pb-4">
+                        <div className="space-y-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-white truncate">{usuario.name}</p>
+                              <p className="text-sm text-blue-200 truncate">{usuario.email}</p>
+                            </div>
+                            <Badge 
+                              variant={usuario.role === "centro_admin" ? "default" : "secondary"} 
+                              className="bg-orange-500 text-white border-orange-600 shrink-0"
+                            >
+                              {usuario.role === "centro_admin" ? "Admin" : "Sec"}
+                            </Badge>
+                          </div>
+
+                          <div className="text-sm text-blue-300 border-t border-blue-700 pt-2">
+                            <p className="text-xs text-blue-400">Telefone</p>
+                            <p className="text-blue-200">{usuario.phone || "-"}</p>
+                          </div>
+
+                          <div className="flex gap-2 border-t border-blue-700 pt-3">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="flex-1 h-9 text-blue-200 hover:text-white hover:bg-blue-700">
+                                  <MoreVertical className="h-4 w-4 mr-1" />
+                                  Menu
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="bg-blue-900 border-blue-800">
+                                <DropdownMenuItem asChild className="hover:bg-blue-800">
+                                  <button onClick={() => router.push(`/dashboard/usuarios/editar?id=${usuario.id}`)} className="flex items-center cursor-pointer text-blue-100 w-full">
+                                    <Edit2 className="h-4 w-4 mr-2" />
+                                    Editar
+                                  </button>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => handleDeleteUsuario(usuario.id)}
+                                  className="hover:bg-red-900/30 text-red-400 cursor-pointer"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Deletar
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-sm text-white truncate">{usuario.name}</h3>
-                          <p className="text-xs text-blue-300 truncate">{usuario.email}</p>
-                        </div>
-                        <Badge
-                          variant={usuario.role === "centro_admin" ? "default" : "secondary"}
-                          className="shrink-0 bg-orange-500 text-white border-orange-600 text-xs"
-                        >
-                          {usuario.role === "centro_admin" ? "Admin" : "Sec"}
-                        </Badge>
-                      </div>
-                      <div className="flex gap-2 items-center">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="border-blue-700 text-blue-300 hover:bg-blue-900 hover:text-white"
-                          onClick={() => router.push(`/dashboard/usuarios/editar?id=${usuario.id}`)}
-                        >
-                          <Edit2 className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="border-red-700/50 text-red-300 hover:bg-red-900/20 hover:text-red-200 hover:border-red-600"
-                          onClick={() => handleDeleteUsuario(usuario.id)}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            )}
-          </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </div>
+
+              {/* Paginação Mobile */}
+              {filteredUsuarios.length > 0 && (
+                <div className="md:hidden mt-4 border-t border-blue-700 pt-4">
+                  <Pagination 
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                    itemsPerPage={itemsPerPage}
+                  />
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
 

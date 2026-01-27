@@ -10,12 +10,14 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { CheckCircle, AlertCircle, XCircle, Calendar, Search, Filter } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { CheckCircle, AlertCircle, XCircle, Calendar, Search, Filter, MoreVertical } from "lucide-react"
 import type { Pagamento, PagamentoInstallment, Aluno, Turma } from "@/lib/types"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useAuth } from "@/hooks/use-auth"
 import { Progress } from "@/components/ui/progress"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Pagination } from "@/components/pagination"
 
 export default function PagamentosPage() {
   const router = useRouter()
@@ -32,7 +34,8 @@ export default function PagamentosPage() {
   }>({ open: false, pagamento: null, installments: [] })
   const [loading, setLoading] = useState(false)
   const [installmentStats, setInstallmentStats] = useState<Record<string, { paidCount: number; totalCount: number; percentage: number }>>({})
-  const { toast } = useToast()
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage] = useState(10)
 
   useEffect(() => {
     if (!currentUser?.centroId) {
@@ -41,6 +44,26 @@ export default function PagamentosPage() {
     }
     loadData(currentUser.centroId)
   }, [currentUser, router])
+
+  // Listener para recarregar dados quando um pagamento for criado
+  useEffect(() => {
+    const handlePagamentoCreated = () => {
+      console.log("📢 Evento: pagamento criado, recarregando dados...")
+      if (currentUser?.centroId) {
+        loadData(currentUser.centroId)
+      }
+    }
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("pagamento:created", handlePagamentoCreated)
+    }
+
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("pagamento:created", handlePagamentoCreated)
+      }
+    }
+  }, [currentUser])
 
   const loadData = async (centroId: string) => {
     try {
@@ -72,7 +95,7 @@ export default function PagamentosPage() {
       setInstallmentStats(stats)
     } catch (error) {
       console.error("Erro ao carregar dados:", error)
-      toast({ title: "Erro ao carregar dados", variant: "destructive" })
+      alert("Erro ao carregar dados")
     }
   }
 
@@ -95,7 +118,7 @@ export default function PagamentosPage() {
       setInstallmentsDialog({ open: true, pagamento, installments })
     } catch (error) {
       console.error("Erro ao carregar prestações:", error)
-      toast({ title: "Erro ao carregar prestações", variant: "destructive" })
+      alert("Erro ao carregar prestações")
     }
   }
 
@@ -117,13 +140,13 @@ export default function PagamentosPage() {
             status: "completed",
             installmentsPaid: installmentsDialog.pagamento.installments,
           })
-          toast({ title: "Pagamento completo registrado com sucesso!" })
+          alert("Pagamento completo registrado com sucesso!")
         } else {
           const updateResult = await pagamentoService.update(installmentsDialog.pagamento.id, {
             status: "partial",
             installmentsPaid: paidCount,
           })
-          toast({ title: "Prestação paga com sucesso!" })
+          alert("Prestação paga com sucesso!")
         }
       }
       
@@ -149,7 +172,7 @@ export default function PagamentosPage() {
       }
     } catch (error) {
       console.error("Erro ao pagar prestação:", error)
-      toast({ title: "Erro ao pagar prestação", variant: "destructive" })
+      alert("Erro ao pagar prestação")
     } finally {
       setLoading(false)
     }
@@ -163,7 +186,7 @@ export default function PagamentosPage() {
       const unpaidInstallments = installmentsDialog.installments.filter((i) => i.status !== "paid")
 
       if (unpaidInstallments.length === 0) {
-        toast({ title: "Todas as prestações já foram pagas", variant: "default" })
+        alert("Todas as prestações já foram pagas")
         setLoading(false)
         return
       }
@@ -182,9 +205,9 @@ export default function PagamentosPage() {
           status: "completed",
           installmentsPaid: installmentsDialog.pagamento.installments,
         })
-        toast({ title: "Todas as prestações foram pagas! Pagamento completo." })
+        alert("Todas as prestações foram pagas! Pagamento completo.")
       } else {
-        toast({ title: `Prestação ${nextInstallment.installmentNumber} assinada com sucesso!` })
+        alert(`Prestação ${nextInstallment.installmentNumber} assinada com sucesso!`)
       }
 
       if (currentUser?.centroId) {
@@ -200,7 +223,7 @@ export default function PagamentosPage() {
       }
     } catch (error) {
       console.error("Erro ao assinar próxima prestação:", error)
-      toast({ title: "Erro ao assinar próxima prestação", variant: "destructive" })
+      alert("Erro ao assinar próxima prestação")
     } finally {
       setLoading(false)
     }
@@ -232,6 +255,11 @@ export default function PagamentosPage() {
     })
   }
 
+  // Reset página quando filtros mudam
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, methodFilter])
+
   const pendingPagamentos = filterPagamentos(
     pagamentos.filter((p) => p.status !== "completed" && p.status !== "cancelled"),
   )
@@ -243,6 +271,172 @@ export default function PagamentosPage() {
   )
   const completedPagamentos = filterPagamentos(pagamentos.filter((p) => p.status === "completed"))
   const allFilteredPagamentos = filterPagamentos(pagamentos)
+
+  // Função para paginar lista
+  const paginateList = (list: Pagamento[]) => {
+    const totalPages = Math.ceil(list.length / itemsPerPage)
+    const startIndex = (currentPage - 1) * itemsPerPage
+    const endIndex = startIndex + itemsPerPage
+    return {
+      items: list.slice(startIndex, endIndex),
+      totalPages,
+      totalItems: list.length,
+    }
+  }
+
+  // Renderizar tabela para cada aba
+  const renderPagamentosTable = (pagamentosList: Pagamento[], emptyMessage: string) => {
+    const { items: paginatedItems, totalPages, totalItems } = paginateList(pagamentosList)
+
+    return (
+      <div className="space-y-4">
+        {/* Exibição Desktop - Tabela */}
+        <div className="hidden md:block rounded-lg border border-blue-800 overflow-hidden">
+          <Table>
+            <TableHeader className="bg-blue-800/50">
+              <TableRow className="hover:bg-blue-800/50 border-blue-700">
+                <TableHead className="text-blue-100 font-semibold">Aluno</TableHead>
+                <TableHead className="text-blue-100 font-semibold">Turma</TableHead>
+                <TableHead className="text-blue-100 font-semibold">Valor</TableHead>
+                <TableHead className="text-blue-100 font-semibold">Prestações</TableHead>
+                <TableHead className="text-blue-100 font-semibold">Método</TableHead>
+                <TableHead className="text-blue-100 font-semibold">Status</TableHead>
+                <TableHead className="text-blue-100 font-semibold">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {paginatedItems.length === 0 ? (
+                <TableRow className="border-blue-700 hover:bg-blue-900/20">
+                  <TableCell colSpan={7} className="text-center text-blue-300 py-8">
+                    {totalItems === 0 ? emptyMessage : "Nenhum pagamento encontrado com os filtros aplicados"}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                paginatedItems.map((pagamento) => {
+                  const statusConfig = getStatusBadge(pagamento.status)
+                  return (
+                    <TableRow key={pagamento.id} className="border-blue-700 hover:bg-blue-900/30 transition-colors">
+                      <TableCell className="text-white font-medium">{getAlunoName(pagamento.alunoId)}</TableCell>
+                      <TableCell className="text-blue-200">{getTurmaName(pagamento.turmaId)}</TableCell>
+                      <TableCell className="text-blue-200 font-semibold">{pagamento.amount.toLocaleString("pt-AO")} Kz</TableCell>
+                      <TableCell className="text-blue-200">
+                        {getStats(pagamento.id).paidCount}/{pagamento.installments}
+                      </TableCell>
+                      <TableCell className="text-blue-200 capitalize">
+                        {pagamento.paymentMethod === "cash"
+                          ? "Dinheiro"
+                          : pagamento.paymentMethod === "transfer"
+                            ? "Transferência"
+                            : "Multicaixa"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={statusConfig.variant} className="bg-orange-500 text-white border-orange-600">
+                          {statusConfig.label}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-blue-200 hover:text-white hover:bg-blue-800">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="bg-blue-900 border-blue-800">
+                            <DropdownMenuItem 
+                              onClick={() => handleViewInstallments(pagamento)}
+                              className="hover:bg-blue-800 text-blue-100 cursor-pointer"
+                            >
+                              Ver Prestações
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        {/* Exibição Mobile - Cards */}
+        <div className="md:hidden space-y-3">
+          {paginatedItems.length === 0 ? (
+            <Card className="bg-blue-900/30 border-blue-800">
+              <CardContent className="py-8 text-center">
+                <p className="text-blue-300">
+                  {totalItems === 0 ? emptyMessage : "Nenhum pagamento encontrado com os filtros aplicados"}
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            paginatedItems.map((pagamento) => {
+              const statusConfig = getStatusBadge(pagamento.status)
+              return (
+                <Card key={pagamento.id} className="bg-blue-800/40 border-blue-700 hover:border-orange-500 transition-colors">
+                  <CardContent className="pt-4 pb-4">
+                    <div className="space-y-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-white truncate">{getAlunoName(pagamento.alunoId)}</p>
+                          <p className="text-sm text-blue-200 truncate">{getTurmaName(pagamento.turmaId)}</p>
+                        </div>
+                        <Badge variant={statusConfig.variant} className="bg-orange-500 text-white border-orange-600 shrink-0">
+                          {statusConfig.label}
+                        </Badge>
+                      </div>
+
+                      <div className="space-y-2 text-sm border-t border-blue-700 pt-2">
+                        <div className="flex justify-between">
+                          <p className="text-blue-300">Valor:</p>
+                          <p className="text-white font-semibold">{pagamento.amount.toLocaleString("pt-AO")} Kz</p>
+                        </div>
+                        <div className="flex justify-between">
+                          <p className="text-blue-300">Prestações:</p>
+                          <p className="text-white font-semibold">{getStats(pagamento.id).paidCount}/{pagamento.installments}</p>
+                        </div>
+                        <div className="flex justify-between">
+                          <p className="text-blue-300">Método:</p>
+                          <p className="text-white capitalize">
+                            {pagamento.paymentMethod === "cash"
+                              ? "Dinheiro"
+                              : pagamento.paymentMethod === "transfer"
+                                ? "Transferência"
+                                : "Multicaixa"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="w-full border-orange-500 text-orange-400 hover:bg-orange-500/20 hover:border-orange-400"
+                        onClick={() => handleViewInstallments(pagamento)}
+                      >
+                        Ver Prestações
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })
+          )}
+        </div>
+
+        {/* Paginação */}
+        {totalItems > 0 && (
+          <div className="mt-4 border-t border-blue-700 pt-4">
+            <Pagination 
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              itemsPerPage={itemsPerPage}
+            />
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-screen flex-col md:flex-row bg-slate-900">
@@ -257,8 +451,7 @@ export default function PagamentosPage() {
             </div>
           </div>
 
-          <Card className="mb-6 bg-blue-900/30 border-blue-800">
-            <CardContent className="pt-6">
+            <CardContent className="p-4">
               <div className="flex flex-col md:flex-row gap-4">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-blue-400" />
@@ -283,7 +476,6 @@ export default function PagamentosPage() {
                 </Select>
               </div>
             </CardContent>
-          </Card>
 
           <Tabs defaultValue="all" className="space-y-6">
             <TabsList>
@@ -293,199 +485,20 @@ export default function PagamentosPage() {
               <TabsTrigger value="completed">Completos ({otherCompletedPagamentos.length})</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="pending" className="space-y-4">
-              {pendingPagamentos.length === 0 ? (
-                <Card className="bg-blue-900/30 border-blue-800">
-                  <CardContent className="py-12 text-center">
-                    <p className="text-blue-300">
-                      {pagamentos.filter((p) => p.status !== "completed" && p.status !== "cancelled").length === 0
-                        ? "Nenhum pagamento pendente"
-                        : "Nenhum pagamento encontrado com os filtros aplicados"}
-                    </p>
-                  </CardContent>
-                </Card>
-              ) : (
-                pendingPagamentos.map((pagamento) => {
-                  const statusConfig = getStatusBadge(pagamento.status)
-                  const StatusIcon = statusConfig.icon
-                  return (
-                    <Card key={pagamento.id} className="bg-blue-900/30 border-blue-800 hover:border-orange-500 transition-colors">
-                      <CardHeader className="pb-1">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="space-y-2">
-                            <CardTitle className="text-lg text-white">{getAlunoName(pagamento.alunoId)}</CardTitle>
-                            <p className="text-sm text-blue-300 font-medium">
-                              {getTurmaName(pagamento.turmaId)}
-                            </p>
-                          </div>
-                          <Badge variant={statusConfig.variant} className="shrink-0 bg-orange-500 text-white border-orange-600">
-                            <StatusIcon className="h-3 w-3 mr-1" />
-                            {statusConfig.label}
-                          </Badge>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="">
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                          <div>
-                            <p className="text-xs text-blue-300 mb-1">Valor Total</p>
-                            <p className="font-semibold text-lg text-white">{pagamento.amount.toLocaleString("pt-AO")} Kz</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-blue-300 mb-1">Prestações</p>
-                            <p className="font-semibold text-white">
-                              {getStats(pagamento.id).paidCount}/{pagamento.installments}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-blue-300 mb-1">Método</p>
-                            <p className="font-semibold capitalize text-white">
-                              {pagamento.paymentMethod === "cash"
-                                ? "Dinheiro"
-                                : pagamento.paymentMethod === "transfer"
-                                  ? "Transferência"
-                                  : "Multicaixa"}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-blue-300 mb-1">Data</p>
-                            <p className="font-semibold text-sm text-white">{pagamento.createdAt.toLocaleDateString("pt-AO")}</p>
-                          </div>
-                        </div>
-
-                        <div className="pt-3 border-t border-blue-800">
-                          <Button size="sm" variant="outline" className="border-orange-500 text-orange-400 hover:bg-orange-500/20 hover:border-orange-400" onClick={() => handleViewInstallments(pagamento)}>
-                            Ver Prestações
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )
-                })
-              )}
+            <TabsContent value="pending">
+              {renderPagamentosTable(pendingPagamentos, "Nenhum pagamento pendente")}
             </TabsContent>
 
-            <TabsContent value="vista" className="space-y-4">
-              {vistaCompletedPagamentos.length === 0 ? (
-                <Card className="bg-blue-900/30 border-blue-800">
-                  <CardContent className="py-12 text-center">
-                    <p className="text-blue-300">
-                      {pagamentos.filter((p) => p.status === "completed" && p.paymentMethod === "cash").length === 0
-                        ? "Nenhum pagamento à vista"
-                        : "Nenhum pagamento encontrado com os filtros aplicados"}
-                    </p>
-                  </CardContent>
-                </Card>
-              ) : (
-                vistaCompletedPagamentos.map((pagamento) => {
-                  const statusConfig = getStatusBadge(pagamento.status)
-                  const StatusIcon = statusConfig.icon
-                  return (
-                    <Card key={pagamento.id} className="bg-blue-900/30 border-blue-800 hover:border-orange-500 transition-colors">
-                      <CardContent className="py-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="space-y-1">
-                            <p className="font-semibold text-white">{getAlunoName(pagamento.alunoId)}</p>
-                            <p className="text-sm text-blue-300">{getTurmaName(pagamento.turmaId)}</p>
-                            <p className="text-sm font-semibold text-white">{pagamento.amount.toLocaleString("pt-AO")} Kz</p>
-                            <p className="text-sm text-blue-300">
-                              {getStats(pagamento.id).paidCount}/{pagamento.installments} prestações
-                            </p>
-                          </div>
-                          <Badge variant={statusConfig.variant} className="bg-green-500 text-white border-green-600">
-                            <StatusIcon className="h-3 w-3 mr-1" />
-                            {statusConfig.label}
-                          </Badge>
-                        </div>
-                        <Progress value={100} className="h-2 bg-blue-800" />
-                      </CardContent>
-                    </Card>
-                  )
-                })
-              )}
+            <TabsContent value="vista">
+              {renderPagamentosTable(vistaCompletedPagamentos, "Nenhum pagamento à vista")}
             </TabsContent>
 
-            <TabsContent value="completed" className="space-y-4">
-              {otherCompletedPagamentos.length === 0 ? (
-                <Card className="bg-blue-900/30 border-blue-800">
-                  <CardContent className="py-12 text-center">
-                    <p className="text-blue-300">
-                      {pagamentos.filter((p) => p.status === "completed" && p.paymentMethod !== "cash").length === 0
-                        ? "Nenhum pagamento completo"
-                        : "Nenhum pagamento encontrado com os filtros aplicados"}
-                    </p>
-                  </CardContent>
-                </Card>
-              ) : (
-                otherCompletedPagamentos.map((pagamento) => {
-                  const statusConfig = getStatusBadge(pagamento.status)
-                  const StatusIcon = statusConfig.icon
-                  return (
-                    <Card key={pagamento.id} className="bg-blue-900/30 border-blue-800 hover:border-orange-500 transition-colors">
-                      <CardContent className="py-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="space-y-1">
-                            <p className="font-semibold text-white">{getAlunoName(pagamento.alunoId)}</p>
-                            <p className="text-sm text-blue-300">{getTurmaName(pagamento.turmaId)}</p>
-                            <p className="text-sm font-semibold text-white">
-                              {pagamento.amount.toLocaleString("pt-AO")} Kz
-                            </p>
-                            <p className="text-sm text-blue-300">
-                              {getStats(pagamento.id).paidCount}/{pagamento.installments} prestações
-                            </p>
-                          </div>
-                          <Badge variant={statusConfig.variant} className="bg-green-500 text-white border-green-600">
-                            <StatusIcon className="h-3 w-3 mr-1" />
-                            {statusConfig.label}
-                          </Badge>
-                        </div>
-                        <Progress value={100} className="h-2 bg-blue-800" />
-                      </CardContent>
-                    </Card>
-                  )
-                })
-              )}
+            <TabsContent value="completed">
+              {renderPagamentosTable(otherCompletedPagamentos, "Nenhum pagamento completo")}
             </TabsContent>
 
-            <TabsContent value="all" className="space-y-4">
-              {allFilteredPagamentos.length === 0 ? (
-                <Card className="bg-blue-900/30 border-blue-800">
-                  <CardContent className="py-12 text-center">
-                    <p className="text-blue-300">
-                      {pagamentos.length === 0
-                        ? "Nenhum pagamento cadastrado"
-                        : "Nenhum pagamento encontrado com os filtros aplicados"}
-                    </p>
-                  </CardContent>
-                </Card>
-              ) : (
-                allFilteredPagamentos.map((pagamento) => {
-                  const statusConfig = getStatusBadge(pagamento.status)
-                  const StatusIcon = statusConfig.icon
-                  return (
-                    <Card key={pagamento.id} className="bg-blue-900/30 border-blue-800 hover:border-orange-500 transition-colors">
-                      <CardContent className="py-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="space-y-1">
-                            <p className="font-semibold text-white">{getAlunoName(pagamento.alunoId)}</p>
-                            <p className="text-sm text-blue-300">{getTurmaName(pagamento.turmaId)}</p>
-                            <p className="text-sm font-semibold text-white">
-                              {pagamento.amount.toLocaleString("pt-AO")} Kz
-                            </p>
-                            <p className="text-sm text-blue-300">
-                              {getStats(pagamento.id).paidCount}/{pagamento.installments} prestações
-                            </p>
-                          </div>
-                          <Badge variant={statusConfig.variant} className="bg-orange-500 text-white border-orange-600">
-                            <StatusIcon className="h-3 w-3 mr-1" />
-                            {statusConfig.label}
-                          </Badge>
-                        </div>
-                        <Progress value={getStats(pagamento.id).percentage} className="h-2 bg-blue-800" />
-                      </CardContent>
-                    </Card>
-                  )
-                })
-              )}
+            <TabsContent value="all">
+              {renderPagamentosTable(allFilteredPagamentos, "Nenhum pagamento cadastrado")}
             </TabsContent>
           </Tabs>
         </div>
@@ -496,69 +509,109 @@ export default function PagamentosPage() {
         open={installmentsDialog.open}
         onOpenChange={(open) => setInstallmentsDialog({ ...installmentsDialog, open })}
       >
-        <DialogContent className="max-w-2xl bg-blue-900/40 border-blue-800">
-          <DialogHeader>
-            <DialogTitle className="text-white">Prestações do Pagamento</DialogTitle>
+        <DialogContent className="max-w-4xl max-h-[90vh] bg-slate-900 border-blue-800 overflow-hidden flex flex-col p-0">
+          <DialogHeader className="border-b border-blue-800 px-6 py-4">
+            <DialogTitle className="text-2xl text-white">Prestações do Pagamento</DialogTitle>
           </DialogHeader>
           {installmentsDialog.pagamento && (
-            <div className="space-y-4">
-              <div className="bg-blue-800/40 p-4 rounded-lg space-y-2 border border-blue-700">
-                <p className="font-semibold text-white">{getAlunoName(installmentsDialog.pagamento.alunoId)}</p>
+            <div className="flex-1 overflow-y-auto flex flex-col">
+              {/* Header Info */}
+              <div className="bg-blue-800/50 px-6 py-4 border-b border-blue-700 space-y-2">
+                <p className="font-semibold text-white text-lg">{getAlunoName(installmentsDialog.pagamento.alunoId)}</p>
                 <p className="text-sm text-blue-300">{getTurmaName(installmentsDialog.pagamento.turmaId)}</p>
                 <p className="text-sm text-blue-200">
                   Total:{" "}
-                  <span className="font-semibold text-white">
+                  <span className="font-semibold text-white text-base">
                     {installmentsDialog.pagamento.amount.toLocaleString("pt-AO")} Kz
                   </span>
                 </p>
               </div>
 
-              <div className="space-y-3">
+              {/* Installments Grid */}
+              <div className="flex-1 px-6 py-4 space-y-3 overflow-y-auto">
                 {installmentsDialog.installments.map((installment) => (
-                  <Card key={installment.id} className="bg-blue-900/30 border-blue-800">
-                    <CardContent className="py-4">
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-1">
-                          <p className="font-medium text-white">{installment.installmentNumber}ª Prestação</p>
-                          <p className="text-sm text-blue-300">
-                            {installment.amount.toLocaleString("pt-AO")} Kz
-                          </p>
-                          <div className="flex items-center gap-2 text-sm text-blue-300">
-                            <Calendar className="h-3 w-3" />
-                            Vence: {installment.dueDate.toLocaleDateString("pt-AO")}
-                          </div>
-                          {installment.paidAt && (
-                            <p className="text-sm text-green-400">
-                              Pago em: {installment.paidAt.toLocaleDateString("pt-AO")}
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex flex-col items-end gap-2">
-                          <Badge variant={installment.status === "paid" ? "default" : "outline"} className={installment.status === "paid" ? "bg-green-500 text-white border-green-600" : "border-orange-500 text-orange-400"}>
-                            {installment.status === "paid" ? "Pago" : "Pendente"}
+                  <div key={installment.id} className="bg-blue-900/40 border border-blue-700 rounded-lg p-4 hover:border-blue-600 transition-colors">
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+                      {/* Número e Status */}
+                      <div className="md:col-span-2">
+                        <p className="text-xs text-blue-300 uppercase font-semibold mb-1">Prestação</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold text-white text-lg">{installment.installmentNumber}ª</p>
+                          <Badge 
+                            variant={installment.status === "paid" ? "default" : "outline"} 
+                            className={installment.status === "paid" ? "bg-green-500 text-white border-green-600 text-xs" : "border-orange-500 text-orange-400 text-xs"}
+                          >
+                            {installment.status === "paid" ? "✓ Pago" : "Pendente"}
                           </Badge>
-                          {installment.status === "pending" && (
-                            <Button size="sm" onClick={() => handlePayInstallment(installment.id)} disabled={loading} className="bg-orange-500 hover:bg-orange-600 text-white">
-                              {loading ? "Processando..." : "Marcar como Pago"}
-                            </Button>
-                          )}
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
+
+                      {/* Valor */}
+                      <div className="md:col-span-2">
+                        <p className="text-xs text-blue-300 uppercase font-semibold mb-1">Valor</p>
+                        <p className="font-bold text-white text-lg">
+                          {installment.amount.toLocaleString("pt-AO")} Kz
+                        </p>
+                      </div>
+
+                      {/* Data de Vencimento */}
+                      <div className="md:col-span-2">
+                        <p className="text-xs text-blue-300 uppercase font-semibold mb-1">Vencimento</p>
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-blue-400 shrink-0" />
+                          <p className="text-sm text-white font-medium">
+                            {installment.dueDate.toLocaleDateString("pt-AO")}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Data de Pagamento */}
+                      <div className="md:col-span-2">
+                        <p className="text-xs text-blue-300 uppercase font-semibold mb-1">Pago em</p>
+                        {installment.paidAt ? (
+                          <p className="text-sm text-green-400 font-medium">
+                            {installment.paidAt.toLocaleDateString("pt-AO")}
+                          </p>
+                        ) : (
+                          <p className="text-sm text-blue-400">-</p>
+                        )}
+                      </div>
+
+                      {/* Ação */}
+                      <div className="md:col-span-4 flex gap-2 justify-start md:justify-end">
+                        {installment.status === "pending" && (
+                          <Button 
+                            size="sm" 
+                            onClick={() => handlePayInstallment(installment.id)} 
+                            disabled={loading} 
+                            className="bg-orange-500 hover:bg-orange-600 text-white text-sm"
+                          >
+                            {loading ? "Processando..." : "Marcar Pago"}
+                          </Button>
+                        )}
+                        {installment.status === "paid" && (
+                          <div className="text-green-400 font-medium text-sm flex items-center">
+                            ✓ Registrado
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 ))}
               </div>
 
-              {/* Botão de Assinar Próxima Prestação */}
+              {/* Footer Actions */}
               {installmentsDialog.pagamento.status === "partial" &&
                 installmentsDialog.installments.some((i) => i.status !== "paid") && (
-                  <Button
-                    onClick={handleSignNextInstallment}
-                    disabled={loading}
-                    className="w-full bg-green-600 hover:bg-green-700 text-white"
-                  >
-                    {loading ? "Processando..." : "✓ Assinar Próxima Prestação"}
-                  </Button>
+                  <div className="border-t border-blue-800 px-6 py-4 bg-blue-900/20">
+                    <Button
+                      onClick={handleSignNextInstallment}
+                      disabled={loading}
+                      className="w-full bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      {loading ? "Processando..." : "✓ Assinar Próxima Prestação"}
+                    </Button>
+                  </div>
                 )}
             </div>
           )}
