@@ -13,7 +13,6 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { ArrowLeft } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
 import type { Formacao, Turma } from "@/lib/types"
 import { useAuth } from "@/hooks/use-auth"
@@ -26,7 +25,6 @@ export default function EditarAlunoPage() {
   const [formacoes, setFormacoes] = useState<Formacao[]>([])
   const [turmas, setTurmas] = useState<Turma[]>([])
   const [loading, setLoading] = useState(true)
-  const { toast } = useToast()
 
   const [formData, setFormData] = useState({
     name: "",
@@ -96,11 +94,11 @@ export default function EditarAlunoPage() {
         })
       } else {
         console.warn("[EditarAluno] Aluno não encontrado!")
-        toast({ title: "Aluno não encontrado", variant: "destructive" })
+        alert("Aluno não encontrado!")
       }
     } catch (error) {
       console.error("[EditarAluno] Erro ao carregar dados:", error)
-      toast({ title: "Erro ao carregar dados", variant: "destructive" })
+     alert("Erro ao carregar dados do aluno.")
     } finally {
       setLoading(false)
     }
@@ -118,10 +116,10 @@ export default function EditarAlunoPage() {
         ...formData,
         birthDate: new Date(formData.birthDate),
       })
-      toast({ title: "Aluno atualizado com sucesso!" })
+      alert("Aluno atualizado com sucesso!")
       router.push("/dashboard/alunos")
     } catch (error) {
-      toast({ title: "Erro ao atualizar aluno", variant: "destructive" })
+      alert("Erro ao atualizar aluno")
       console.error("Erro ao atualizar aluno:", error)
     } finally {
       setLoading(false)
@@ -158,8 +156,8 @@ export default function EditarAlunoPage() {
             <CardHeader>
               <CardTitle className="text-white text-2xl">Editar Aluno</CardTitle>
             </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-8">
+            <CardContent >
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-4">
                   <h3 className="font-semibold text-lg text-white">Dados Pessoais</h3>
                   <div className="space-y-2">
