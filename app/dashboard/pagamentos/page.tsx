@@ -263,12 +263,6 @@ export default function PagamentosPage() {
   const pendingPagamentos = filterPagamentos(
     pagamentos.filter((p) => p.status !== "completed" && p.status !== "cancelled"),
   )
-  const vistaCompletedPagamentos = filterPagamentos(
-    pagamentos.filter((p) => p.status === "completed" && p.paymentMethod === "cash"),
-  )
-  const otherCompletedPagamentos = filterPagamentos(
-    pagamentos.filter((p) => p.status === "completed" && p.paymentMethod !== "cash"),
-  )
   const completedPagamentos = filterPagamentos(pagamentos.filter((p) => p.status === "completed"))
   const allFilteredPagamentos = filterPagamentos(pagamentos)
 
@@ -337,7 +331,7 @@ export default function PagamentosPage() {
                       <TableCell>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-blue-200 hover:text-white hover:bg-blue-800">
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 bg-blue-800/50 text-blue-200 hover:text-white hover:bg-blue-800">
                               <MoreVertical className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
@@ -481,20 +475,15 @@ export default function PagamentosPage() {
             <TabsList>
               <TabsTrigger value="all">Todos ({allFilteredPagamentos.length})</TabsTrigger>
               <TabsTrigger value="pending">Pendentes ({pendingPagamentos.length})</TabsTrigger>
-              <TabsTrigger value="vista">À Vista ({vistaCompletedPagamentos.length})</TabsTrigger>
-              <TabsTrigger value="completed">Completos ({otherCompletedPagamentos.length})</TabsTrigger>
+              <TabsTrigger value="completed">Completos ({completedPagamentos.length})</TabsTrigger>
             </TabsList>
 
             <TabsContent value="pending">
               {renderPagamentosTable(pendingPagamentos, "Nenhum pagamento pendente")}
             </TabsContent>
 
-            <TabsContent value="vista">
-              {renderPagamentosTable(vistaCompletedPagamentos, "Nenhum pagamento à vista")}
-            </TabsContent>
-
             <TabsContent value="completed">
-              {renderPagamentosTable(otherCompletedPagamentos, "Nenhum pagamento completo")}
+              {renderPagamentosTable(completedPagamentos, "Nenhum pagamento completo")}
             </TabsContent>
 
             <TabsContent value="all">

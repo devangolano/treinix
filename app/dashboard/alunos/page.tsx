@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/hooks/use-auth"
-import { alunoService, formacaoService, turmaService, pagamentoService, pagamentoInstallmentService, centroService } from "@/lib/supabase-services"
+import { alunoService, formacaoService, turmaService, pagamentoService, pagamentoInstallmentService, centroService, matriculaService } from "@/lib/supabase-services"
 import { CentroSidebar } from "@/components/centro-sidebar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -23,7 +23,6 @@ import {
   GraduationCap,
   MoreVertical,
 } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
 import { generateAlunoPDF } from "@/lib/pdf-generator"
 import type { Aluno, Formacao, Turma, Pagamento, Centro } from "@/lib/types"
 import { Spinner } from "@/components/ui/spinner"
@@ -38,14 +37,15 @@ export default function AlunosPage() {
   const [turmas, setTurmas] = useState<Turma[]>([])
   const [pagamentos, setPagamentos] = useState<Pagamento[]>([])
   const [centro, setCentro] = useState<Centro | null>(null)
+  const [matriculas, setMatriculas] = useState<any[]>([])
   const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [formacaoFilter, setFormacaoFilter] = useState<string>("all")
+  const [turmaFilter, setTurmaFilter] = useState<string>("all")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [installmentStats, setInstallmentStats] = useState<Record<string, { paidCount: number; totalCount: number; percentage: number }>>({})
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(10)
-  const { toast } = useToast()
 
   useEffect(() => {
     if (authLoading) return
@@ -92,6 +92,19 @@ export default function AlunosPage() {
       setPagamentos(pagamentosData)
       setCentro(centroData)
 
+      // Carregar matrículas para todos os alunos
+      try {
+        const allMatriculas: any[] = []
+        for (const aluno of alunosData) {
+          const alunoMatriculas = await matriculaService.getByAlunoId(aluno.id)
+          allMatriculas.push(...alunoMatriculas)
+        }
+        setMatriculas(allMatriculas)
+      } catch (error) {
+        console.error("Erro ao carregar matrículas:", error)
+        setMatriculas([])
+      }
+
       // Calcular stats de prestações para cada pagamento
       const stats: Record<string, { paidCount: number; totalCount: number; percentage: number }> = {}
       for (const pagamento of pagamentosData) {
@@ -113,11 +126,7 @@ export default function AlunosPage() {
       const message = err instanceof Error ? err.message : "Erro ao carregar dados"
       setError(message)
       console.error("Erro ao carregar dados:", err)
-      toast({
-        title: "Erro",
-        description: message,
-        variant: "destructive",
-      })
+      alert(message)
     } finally {
       setLoading(false)
     }
@@ -130,24 +139,13 @@ export default function AlunosPage() {
       const success = await alunoService.delete(id)
       if (success) {
         setAlunos(alunos.filter((a) => a.id !== id))
-        toast({
-          title: "Sucesso",
-          description: "Aluno deletado com sucesso",
-        })
+        alert("Aluno deletado com sucesso")
       } else {
-        toast({
-          title: "Erro",
-          description: "Erro ao deletar aluno",
-          variant: "destructive",
-        })
+        alert("Erro ao deletar aluno")
       }
     } catch (err) {
       console.error("Erro ao deletar aluno:", err)
-      toast({
-        title: "Erro",
-        description: "Erro ao deletar aluno",
-        variant: "destructive",
-      })
+      alert("Erro ao deletar aluno")
     }
   }
 
@@ -178,9 +176,15 @@ export default function AlunosPage() {
       aluno.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       aluno.bi.includes(searchTerm)
 
-    const matchesStatus = statusFilter === "all" || aluno.status === statusFilter
+    // Verificar se aluno tem matrícula na formação selecionada
+    const alunoMatriculas = matriculas.filter((m) => m.alunoId === aluno.id)
+    const matchesFormacao =
+      formacaoFilter === "all" || alunoMatriculas.some((m) => m.formacaoId === formacaoFilter)
 
-    return matchesSearch && matchesStatus
+    // Verificar se aluno tem matrícula na turma selecionada
+    const matchesTurma = turmaFilter === "all" || alunoMatriculas.some((m) => m.turmaId === turmaFilter)
+
+    return matchesSearch && matchesFormacao && matchesTurma
   })
 
   // Cálculo de paginação
@@ -192,17 +196,17 @@ export default function AlunosPage() {
   // Reset página quando filtros mudam
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchTerm, statusFilter])
+  }, [searchTerm, formacaoFilter, turmaFilter])
 
   const handleDelete = async (id: string) => {
     if (!confirm("Tem certeza que deseja excluir este aluno?")) return
 
     try {
       await alunoService.delete(id)
-      toast({ title: "Aluno excluído com sucesso!" })
+      alert("Aluno excluído com sucesso!")
       if (user?.centroId) loadData(user.centroId)
     } catch (error) {
-      toast({ title: "Erro ao excluir aluno", variant: "destructive" })
+      alert("Erro ao excluir aluno")
     }
   }
 
@@ -235,10 +239,10 @@ export default function AlunosPage() {
         systemPhone: "948324028",
       })
 
-      toast({ title: "Ficha baixada com sucesso!", description: `${aluno.name}.pdf` })
+      alert(`Ficha de ${aluno.name} baixada com sucesso!`)
     } catch (error) {
       console.error("[AlunosList] Erro ao gerar PDF:", error)
-      toast({ title: "Erro ao gerar PDF", variant: "destructive" })
+      alert("Erro ao gerar PDF")
     }
   }
 
@@ -276,36 +280,62 @@ export default function AlunosPage() {
           </div>
 
             <CardContent className="p-4">
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-blue-400" />
-                  <Input
-                    placeholder="Buscar por nome, email ou BI..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-9 bg-blue-800/40 border-blue-700 text-white placeholder:text-blue-300 focus:border-orange-500 focus:ring-orange-500"
-                  />
+              <div className="flex flex-col gap-3">
+                {/* Busca e Filtros - Em linha em telas maiores */}
+                <div className="flex flex-col md:flex-row gap-3">
+                  {/* Busca */}
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-blue-400" />
+                    <Input
+                      placeholder="Buscar..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-9 bg-blue-800/40 border-blue-700 text-white placeholder:text-blue-300 focus:border-orange-500 focus:ring-orange-500"
+                    />
+                  </div>
+
+                  {/* Filtros - Grid no mobile, flex no desktop */}
+                  <div className="grid grid-cols-2 md:flex gap-2 md:gap-3">
+                    <Select value={formacaoFilter} onValueChange={setFormacaoFilter}>
+                      <SelectTrigger className="bg-blue-800/40 border-blue-700 text-white text-xs md:text-sm">
+                        <SelectValue placeholder="Formação" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-blue-900 border-blue-800">
+                        <SelectItem value="all">Todas</SelectItem>
+                        {formacoes.map((f) => (
+                          <SelectItem key={f.id} value={f.id}>
+                            {f.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <Select value={turmaFilter} onValueChange={setTurmaFilter}>
+                      <SelectTrigger className="bg-blue-800/40 border-blue-700 text-white text-xs md:text-sm">
+                        <SelectValue placeholder="Turma" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-blue-900 border-blue-800">
+                        <SelectItem value="all">Todas</SelectItem>
+                        {turmas.map((t) => (
+                          <SelectItem key={t.id} value={t.id}>
+                            {t.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-40 bg-blue-800/40 border-blue-700 text-white">
-                    <Filter className="h-4 w-4 mr-2" />
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-blue-900 border-blue-800">
-                    <SelectItem value="all">Todos Status</SelectItem>
-                    <SelectItem value="active">Ativos</SelectItem>
-                    <SelectItem value="inactive">Inativos</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="mt-3 text-sm text-blue-300">
-                {filteredAlunos.length === alunos.length ? (
-                  <span>{alunos.length} aluno(s) no total</span>
-                ) : (
-                  <span>
-                    {filteredAlunos.length} de {alunos.length} aluno(s) encontrado(s)
-                  </span>
-                )}
+
+                {/* Informação de resultados */}
+                <div className="text-xs md:text-sm text-blue-300">
+                  {filteredAlunos.length === alunos.length ? (
+                    <span>{alunos.length} aluno(s)</span>
+                  ) : (
+                    <span>
+                      {filteredAlunos.length} de {alunos.length}
+                    </span>
+                  )}
+                </div>
               </div>
             </CardContent>
 
@@ -351,7 +381,7 @@ export default function AlunosPage() {
                           <TableCell>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-blue-200 hover:text-white hover:bg-blue-800">
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 bg-blue-800/50 text-blue-200 hover:text-white hover:bg-blue-800">
                                   <MoreVertical className="h-4 w-4" />
                                 </Button>
                               </DropdownMenuTrigger>
@@ -450,7 +480,7 @@ export default function AlunosPage() {
                           <div className="flex gap-2 border-t border-blue-700 pt-3">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm" className="flex-1 h-9 text-blue-200 hover:text-white hover:bg-blue-700">
+                                <Button variant="ghost" size="sm" className="flex-1 h-9 bg-blue-800/50 text-blue-200 hover:text-white hover:bg-blue-800">
                                   <MoreVertical className="h-4 w-4 mr-1" />
                                   Menu
                                 </Button>

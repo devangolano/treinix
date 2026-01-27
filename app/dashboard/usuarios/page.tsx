@@ -262,7 +262,7 @@ export default function UsuariosPage() {
                           <TableCell>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-blue-200 hover:text-white hover:bg-blue-800">
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 bg-blue-800/50 text-blue-200 hover:text-white hover:bg-blue-800">
                                   <MoreVertical className="h-4 w-4" />
                                 </Button>
                               </DropdownMenuTrigger>
@@ -336,7 +336,7 @@ export default function UsuariosPage() {
                           <div className="flex gap-2 border-t border-blue-700 pt-3">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm" className="flex-1 h-9 text-blue-200 hover:text-white hover:bg-blue-700">
+                                <Button variant="ghost" size="sm" className="flex-1 h-9 bg-blue-800/50 text-blue-200 hover:text-white hover:bg-blue-800">
                                   <MoreVertical className="h-4 w-4 mr-1" />
                                   Menu
                                 </Button>
