@@ -7,22 +7,21 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { CentroSidebar } from "@/components/centro-sidebar"
 import { Spinner } from "@/components/ui/spinner"
-import { pagamentoService, formacaoService, turmaService, alunoService, centroService } from "@/lib/supabase-services"
+import { pagamentoService, formacaoService, turmaService, alunoService, centroService, matriculaService } from "@/lib/supabase-services"
 import { useAuth } from "@/hooks/use-auth"
 import { Download, DollarSign, TrendingUp, AlertCircle, Filter, ChevronLeft, ChevronRight } from "lucide-react"
-import type { Pagamento, Formacao, Turma, Aluno } from "@/lib/types"
-import { useToast } from "@/hooks/use-toast"
+import type { Pagamento, Formacao, Turma, Aluno, Matricula } from "@/lib/types"
 import { generatePDF } from "@/lib/pdf-generator"
 
 export default function RelatoriosFinanceirosPage() {
     const { user } = useAuth()
     const router = useRouter()
-    const { toast } = useToast()
 
     const [pagamentos, setPagamentos] = useState<Pagamento[]>([])
     const [formacoes, setFormacoes] = useState<Formacao[]>([])
     const [turmas, setTurmas] = useState<Turma[]>([])
     const [alunos, setAlunos] = useState<Aluno[]>([])
+    const [matriculas, setMatriculas] = useState<Matricula[]>([])
     const [loading, setLoading] = useState(true)
     const [filtrosAbertos, setFiltrosAbertos] = useState(false)
     const [paginaAtual, setPaginaAtual] = useState(1)
@@ -53,19 +52,21 @@ export default function RelatoriosFinanceirosPage() {
             setLoading(true)
             if (!user?.centroId) return
 
-            const [pagData, formData, turmaData, alunoData, centroData] = await Promise.all([
+            const [pagData, formData, turmaData, alunoData, centroData, matData] = await Promise.all([
                 pagamentoService.getAll(user.centroId),
                 formacaoService.getAll(user.centroId),
                 turmaService.getAll(user.centroId),
                 alunoService.getAll(user.centroId),
                 centroService.getById(user.centroId),
+                matriculaService.getAll(user.centroId),
             ])
 
             setPagamentos(pagData)
             setFormacoes(formData)
             setTurmas(turmaData)
             setAlunos(alunoData)
-            
+            setMatriculas(matData)
+
             // Armazenar dados do centro
             if (centroData) {
                 setCentroInfo({
@@ -78,11 +79,7 @@ export default function RelatoriosFinanceirosPage() {
             }
         } catch (error) {
             console.error("Erro ao carregar dados financeiros:", error)
-            toast({
-                title: "Erro ao carregar dados",
-                description: "Não foi possível carregar os dados financeiros.",
-                variant: "destructive",
-            })
+            alert("Erro ao carregar dados financeiros!")
         } finally {
             setLoading(false)
         }
@@ -103,8 +100,8 @@ export default function RelatoriosFinanceirosPage() {
 
         // Filtro por formação
         if (filtroFormacao) {
-            const aluno = alunos.find((a) => a.id === pag.alunoId)
-            if (aluno?.formacaoId !== filtroFormacao) return false
+            const matricula = matriculas.find((m) => m.id === pag.matriculaId)
+            if (matricula?.formacaoId !== filtroFormacao) return false
         }
 
         // Filtro por turma
@@ -189,7 +186,7 @@ export default function RelatoriosFinanceirosPage() {
         try {
             const dataParaExportar = pagamentosFiltrados.map((pag) => ({
                 aluno: getNomeAluno(pag.alunoId),
-                formacao: getNomeFormacao(alunos.find((a) => a.id === pag.alunoId)?.formacaoId),
+                formacao: getNomeFormacao(matriculas.find((m) => m.id === pag.matriculaId)?.formacaoId),
                 turma: getNomeTurma(pag.turmaId),
                 valor: formatCurrency(pag.amount),
                 parcelas: `${pag.installmentsPaid}/${pag.installments}`,
@@ -219,18 +216,10 @@ export default function RelatoriosFinanceirosPage() {
                 }
             )
 
-            toast({
-                title: "Sucesso!",
-                description: "PDF exportado com sucesso.",
-                variant: "default",
-            })
+            alert("PDF exportado com sucesso!")
         } catch (error) {
             console.error("Erro ao exportar PDF:", error)
-            toast({
-                title: "Erro ao exportar",
-                description: "Não foi possível gerar o PDF.",
-                variant: "destructive",
-            })
+            alert("Erro ao exportar PDF!")
         }
     }
 
@@ -310,22 +299,6 @@ export default function RelatoriosFinanceirosPage() {
                                 <div className="w-12 h-12 rounded-full bg-blue-600/20 flex items-center justify-center border border-blue-600/40">
                                     <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Card Pendentes */}
-                        <div className="bg-linear-to-r from-yellow-600/20 to-yellow-700/20 rounded-lg border border-yellow-700/30 p-5 backdrop-blur-sm hover:border-yellow-600/50 transition-all duration-300">
-                            <div className="flex items-center justify-between">
-                                <div className="flex-1">
-                                    <p className="text-sm font-medium text-yellow-300">Pagamentos Pendentes</p>
-                                    <p className="text-3xl font-bold text-yellow-400 mt-2">{pagamentosPendentes.length}</p>
-                                    <p className="text-sm text-yellow-300/70 mt-2">{formatCurrency(totalPendente)}</p>
-                                </div>
-                                <div className="w-12 h-12 rounded-full bg-yellow-600/20 flex items-center justify-center border border-yellow-600/40">
-                                    <svg className="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
                                 </div>
                             </div>
@@ -486,7 +459,7 @@ export default function RelatoriosFinanceirosPage() {
                                                 {pagamentosPaginados.map((pag) => (
                                                     <tr key={pag.id} className="border-b border-blue-800/30 hover:bg-blue-900/20">
                                                         <td className="py-3 px-3 text-blue-100 font-medium">{getNomeAluno(pag.alunoId)}</td>
-                                                        <td className="py-3 px-3 text-blue-300">{getNomeFormacao(alunos.find((a) => a.id === pag.alunoId)?.formacaoId)}</td>
+                                                        <td className="py-3 px-3 text-blue-300">{getNomeFormacao(matriculas.find((m) => m.id === pag.matriculaId)?.formacaoId)}</td>
                                                         <td className="py-3 px-3 text-blue-300">{getNomeTurma(pag.turmaId)}</td>
                                                         <td className="py-3 px-3 text-blue-100 font-semibold">{formatCurrency(pag.amount)}</td>
                                                         <td className="py-3 px-3 text-blue-300">

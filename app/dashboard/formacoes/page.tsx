@@ -157,7 +157,6 @@ export default function FormacoesPage() {
               </div>
             </CardContent>
 
-          <Card className="bg-blue-900/30 border-blue-800">
             <CardContent className="pt-6">
               {/* Exibição Desktop - Tabela */}
               <div className="hidden md:block rounded-lg border border-blue-800 overflow-hidden">
@@ -325,7 +324,6 @@ export default function FormacoesPage() {
                 </div>
               )}
             </CardContent>
-          </Card>
         </div>
       </div>
     </div>
