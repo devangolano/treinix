@@ -129,3 +129,20 @@ export interface PagamentoInstallment {
   paidAt?: Date
   status: "pending" | "paid" | "overdue"
 }
+
+// Tipos de Certificado
+export interface Certificado {
+  id: string
+  centroId: string
+  alunoId: string
+  matriculaId: string
+  formacaoId: string
+  turmaId: string
+  notaFinal: number
+  dataEmissao: Date
+  estado: "emitido" | "em_andamento" | "pronto"
+  pdfUrl?: string
+  status: "active" | "cancelled"
+  createdAt: Date
+  updatedAt: Date
+}

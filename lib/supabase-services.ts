@@ -1,5 +1,5 @@
 import { supabase } from "./supabase"
-import type { Centro, Subscription, Formacao, Aluno, Turma, Pagamento, PagamentoInstallment, Matricula } from "./types"
+import type { Centro, Subscription, Formacao, Aluno, Turma, Pagamento, PagamentoInstallment, Matricula, Certificado } from "./types"
 
 // ============================================
 // SERVIÇO DE CENTROS
@@ -1444,6 +1444,225 @@ export const userService = {
     } catch (error) {
       console.error("Erro ao atualizar último login:", error)
       return false
+    }
+  },
+}
+
+// ============================================
+// SERVIÇO DE CERTIFICADOS
+// ============================================
+export const certificadoService = {
+  /**
+   * Obtém todos os certificados de um centro
+   */
+  async getAll(centroId: string): Promise<Certificado[]> {
+    try {
+      const { data, error } = await supabase
+        .from("certificados")
+        .select("*")
+        .eq("centro_id", centroId)
+        .order("data_emissao", { ascending: false })
+
+      if (error) throw error
+
+      return (data || []).map((item: any) => ({
+        id: item.id,
+        centroId: item.centro_id,
+        alunoId: item.aluno_id,
+        matriculaId: item.matricula_id,
+        formacaoId: item.formacao_id,
+        turmaId: item.turma_id,
+        notaFinal: item.nota_final,
+        dataEmissao: new Date(item.data_emissao),
+        estado: item.estado,
+        pdfUrl: item.pdf_url,
+        status: item.status,
+        createdAt: new Date(item.created_at),
+        updatedAt: new Date(item.updated_at),
+      }))
+    } catch (error) {
+      console.error("[certificadoService] Erro ao buscar certificados:", error)
+      return []
+    }
+  },
+
+  /**
+   * Obtém um certificado pelo ID
+   */
+  async getById(id: string): Promise<Certificado | null> {
+    try {
+      const { data, error } = await supabase.from("certificados").select("*").eq("id", id).single()
+
+      if (error) throw error
+
+      return data
+        ? {
+            id: data.id,
+            centroId: data.centro_id,
+            alunoId: data.aluno_id,
+            matriculaId: data.matricula_id,
+            formacaoId: data.formacao_id,
+            turmaId: data.turma_id,
+            notaFinal: data.nota_final,
+            dataEmissao: new Date(data.data_emissao),
+            estado: data.estado,
+            pdfUrl: data.pdf_url,
+            status: data.status,
+            createdAt: new Date(data.created_at),
+            updatedAt: new Date(data.updated_at),
+          }
+        : null
+    } catch (error) {
+      console.error("[certificadoService] Erro ao buscar certificado:", error)
+      return null
+    }
+  },
+
+  /**
+   * Cria um novo certificado
+   */
+  async create(certificado: Omit<Certificado, "id" | "createdAt" | "updatedAt">): Promise<Certificado | null> {
+    try {
+      const { data, error } = await supabase
+        .from("certificados")
+        .insert([
+          {
+            centro_id: certificado.centroId,
+            aluno_id: certificado.alunoId,
+            matricula_id: certificado.matriculaId,
+            formacao_id: certificado.formacaoId,
+            turma_id: certificado.turmaId,
+            nota_final: certificado.notaFinal,
+            data_emissao: new Date(certificado.dataEmissao).toISOString(),
+            estado: certificado.estado || "emitido",
+            pdf_url: certificado.pdfUrl || null,
+            status: certificado.status,
+          },
+        ])
+        .select()
+        .single()
+
+      if (error) throw error
+
+      return data
+        ? {
+            id: data.id,
+            centroId: data.centro_id,
+            alunoId: data.aluno_id,
+            matriculaId: data.matricula_id,
+            formacaoId: data.formacao_id,
+            turmaId: data.turma_id,
+            notaFinal: data.nota_final,
+            dataEmissao: new Date(data.data_emissao),
+            estado: data.estado,
+            pdfUrl: data.pdf_url,
+            status: data.status,
+            createdAt: new Date(data.created_at),
+            updatedAt: new Date(data.updated_at),
+          }
+        : null
+    } catch (error) {
+      console.error("[certificadoService] Erro ao criar certificado:", error)
+      return null
+    }
+  },
+
+  /**
+   * Atualiza um certificado
+   */
+  async update(
+    id: string,
+    updates: Partial<Omit<Certificado, "id" | "createdAt" | "updatedAt">>
+  ): Promise<Certificado | null> {
+    try {
+      const dataToUpdate: any = {}
+
+      if (updates.status) dataToUpdate.status = updates.status
+      if (updates.notaFinal !== undefined) dataToUpdate.nota_final = updates.notaFinal
+      if (updates.dataEmissao) {
+        dataToUpdate.data_emissao = new Date(updates.dataEmissao).toISOString()
+      }
+      if (updates.estado) {
+        dataToUpdate.estado = updates.estado
+      }
+      if (updates.pdfUrl !== undefined) {
+        dataToUpdate.pdf_url = updates.pdfUrl
+      }
+
+      const { data, error } = await supabase.from("certificados").update(dataToUpdate).eq("id", id).select().single()
+
+      if (error) throw error
+
+      return data
+        ? {
+            id: data.id,
+            centroId: data.centro_id,
+            alunoId: data.aluno_id,
+            matriculaId: data.matricula_id,
+            formacaoId: data.formacao_id,
+            turmaId: data.turma_id,
+            notaFinal: data.nota_final,
+            dataEmissao: new Date(data.data_emissao),
+            estado: data.estado,
+            pdfUrl: data.pdf_url,
+            status: data.status,
+            createdAt: new Date(data.created_at),
+            updatedAt: new Date(data.updated_at),
+          }
+        : null
+    } catch (error) {
+      console.error("[certificadoService] Erro ao atualizar certificado:", error)
+      return null
+    }
+  },
+
+  /**
+   * Deleta um certificado
+   */
+  async delete(id: string): Promise<boolean> {
+    try {
+      const { error } = await supabase.from("certificados").delete().eq("id", id)
+
+      if (error) throw error
+
+      return true
+    } catch (error) {
+      console.error("[certificadoService] Erro ao deletar certificado:", error)
+      return false
+    }
+  },
+
+  /**
+   * Obtém certificados por aluno
+   */
+  async getByAlunoId(alunoId: string): Promise<Certificado[]> {
+    try {
+      const { data, error } = await supabase
+        .from("certificados")
+        .select("*")
+        .eq("aluno_id", alunoId)
+        .order("data_emissao", { ascending: false })
+
+      if (error) throw error
+
+      return (data || []).map((item: any) => ({
+        id: item.id,
+        centroId: item.centro_id,
+        alunoId: item.aluno_id,
+        matriculaId: item.matricula_id,
+        formacaoId: item.formacao_id,
+        turmaId: item.turma_id,
+        notaFinal: item.nota_final,
+        dataEmissao: new Date(item.data_emissao),
+        estado: item.estado,
+        pdfUrl: item.pdf_url,
+        status: item.status,
+        createdAt: new Date(item.created_at),
+        updatedAt: new Date(item.updated_at),
+      }))
+    } catch (error) {
+      console.error("[certificadoService] Erro ao buscar certificados do aluno:", error)
+      return []
     }
   },
 }

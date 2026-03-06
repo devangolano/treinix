@@ -8,8 +8,8 @@
 -- 1. Vá em Authentication → Users
 -- 2. Clique "Create User"
 -- 3. Preencha:
---    Email: admin@formacao-ao.com
---    Password: admin123
+--    Email: devangolano@gmail.com
+--    Password: Darlene@2021!
 --    Marque "Auto Confirm User"
 -- 4. Clique "Create User"
 
@@ -19,7 +19,7 @@
 INSERT INTO users (name, email, phone, role, password_hash)
 VALUES (
   'Super Admin',
-  'admin@formacao-ao.com',
+  'devangolano@gmail.com',
   '+244 923 456 789',
   'super_admin',
   '' -- Deixar vazio, pois a senha está no Supabase Auth
@@ -31,7 +31,7 @@ SET
   role = 'super_admin';
 
 -- Verificar se foi criado corretamente
-SELECT id, name, email, role, created_at FROM users WHERE email = 'admin@formacao-ao.com';
+SELECT id, name, email, role, created_at FROM users WHERE email = 'devangolano@gmail.com';
 
 -- ============================================
 -- INSTRUÇÕES DE USO
@@ -40,21 +40,21 @@ SELECT id, name, email, role, created_at FROM users WHERE email = 'admin@formaca
 --    a) Vá em Authentication → Users no Supabase
 --    b) Clique "Create User"
 --    c) Preencha:
---       - Email: admin@formacao-ao.com
---       - Password: admin123
+--       - Email: devangolano@gmail.com
+--       - Password: Darlene@2021!
 --       - Marque "Auto Confirm User"
 --    d) Clique "Create User"
 --    e) Volte aqui e execute este SQL
 --
 -- 2. Se já existe Super Admin e quer substituir:
 --    a) Vá em Authentication → Users
---    b) Procure admin@formacao-ao.com
+--    b) Procure devangolano@gmail.com
 --    c) Delete o usuário
 --    d) Crie um novo com os dados acima
 --    e) Execute este SQL
 --
 -- 3. Faça login com:
---    Email: admin@formacao-ao.com
---    Senha: admin123
+--    Email: devangolano@gmail.com
+--    Senha: Darlene@2021!
 --
--- ⚠️ MUDE A SENHA APÓS O PRIMEIRO LOGIN!
+-- ⚠️ Guarde suas credenciais de forma segura!

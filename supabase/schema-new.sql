@@ -220,6 +220,33 @@ CREATE INDEX IF NOT EXISTS idx_installments_status ON pagamento_installments(sta
 CREATE INDEX IF NOT EXISTS idx_installments_due_date ON pagamento_installments(due_date);
 
 -- ============================================
+-- TABELA: certificados
+-- Certificados emitidos para alunos
+-- ============================================
+CREATE TABLE IF NOT EXISTS certificados (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  centro_id UUID NOT NULL REFERENCES centros(id) ON DELETE CASCADE,
+  aluno_id UUID NOT NULL REFERENCES alunos(id) ON DELETE CASCADE,
+  matricula_id UUID NOT NULL REFERENCES matriculas(id) ON DELETE CASCADE,
+  formacao_id UUID NOT NULL REFERENCES formacoes(id) ON DELETE CASCADE,
+  turma_id UUID NOT NULL REFERENCES turmas(id) ON DELETE CASCADE,
+  nota_final DECIMAL(5, 2) NOT NULL CHECK (nota_final >= 0 AND nota_final <= 20),
+  data_emissao TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  data_validade TIMESTAMP WITH TIME ZONE,
+  status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'cancelled')),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Índices
+CREATE INDEX IF NOT EXISTS idx_certificados_centro_id ON certificados(centro_id);
+CREATE INDEX IF NOT EXISTS idx_certificados_aluno_id ON certificados(aluno_id);
+CREATE INDEX IF NOT EXISTS idx_certificados_matricula_id ON certificados(matricula_id);
+CREATE INDEX IF NOT EXISTS idx_certificados_formacao_id ON certificados(formacao_id);
+CREATE INDEX IF NOT EXISTS idx_certificados_turma_id ON certificados(turma_id);
+CREATE INDEX IF NOT EXISTS idx_certificados_status ON certificados(status);
+
+-- ============================================
 -- TRIGGERS
 -- Atualização automática de timestamps
 -- ============================================
@@ -253,6 +280,9 @@ CREATE TRIGGER update_alunos_updated_at BEFORE UPDATE ON alunos
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_pagamentos_updated_at BEFORE UPDATE ON pagamentos
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_certificados_updated_at BEFORE UPDATE ON certificados
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ============================================
@@ -307,7 +337,7 @@ ALTER TABLE turmas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE alunos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pagamentos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pagamento_installments ENABLE ROW LEVEL SECURITY;
-
+ALTER TABLE certificados ENABLE ROW LEVEL SECURITY;
 -- ============================================
 -- POLÍTICAS RLS: centros
 -- ============================================
@@ -516,6 +546,25 @@ CREATE POLICY "Qualquer usuário pode criar prestações" ON pagamento_installme
   WITH CHECK (true);
 
 -- ============================================
+-- POLÍTICAS RLS: certificados
+-- ============================================
+
+-- Super Admin: ver todos
+CREATE POLICY "Super admin vê todos os certificados" ON certificados
+  FOR SELECT
+  USING (get_user_role(auth.jwt() ->> 'email') = 'super_admin');
+
+-- Centro: gerenciar seus certificados
+CREATE POLICY "Centro gerencia seus certificados" ON certificados
+  FOR ALL
+  USING (centro_id = get_user_centro_id(auth.jwt() ->> 'email'));
+
+-- Qualquer usuário autenticado pode criar certificados
+CREATE POLICY "Qualquer usuário pode criar certificados" ON certificados
+  FOR INSERT
+  WITH CHECK (true);
+
+-- ============================================
 -- DADOS INICIAIS
 -- ============================================
 
@@ -624,7 +673,9 @@ COMMENT ON TABLE turmas IS 'Turmas/classes dos cursos com datas e horários espe
 COMMENT ON TABLE alunos IS 'Estudantes matriculados nos centros de formação';
 COMMENT ON TABLE pagamentos IS 'Pagamentos dos alunos com suporte para 1 ou 2 prestações';
 COMMENT ON TABLE pagamento_installments IS 'Prestações individuais dos pagamentos';
+COMMENT ON TABLE certificados IS 'Certificados emitidos para alunos que completaram formações';
 
 -- ============================================
 -- FIM DO SCHEMA
 -- ============================================
+
