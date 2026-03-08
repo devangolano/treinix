@@ -126,9 +126,9 @@ export default function DashboardPage() {
             <p className="text-blue-200">Bem-vindo de volta, {user.name}</p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
             <Card className="bg-blue-900/30 border-blue-800 hover:border-orange-500 transition-colors">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-sm font-medium text-blue-100">Total de Alunos</CardTitle>
                 <Users className="h-4 w-4 text-orange-400" />
               </CardHeader>
@@ -139,7 +139,7 @@ export default function DashboardPage() {
             </Card>
 
             <Card className="bg-blue-900/30 border-blue-800 hover:border-orange-500 transition-colors">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-sm font-medium text-blue-100">Formações</CardTitle>
                 <GraduationCap className="h-4 w-4 text-orange-400" />
               </CardHeader>
@@ -150,7 +150,7 @@ export default function DashboardPage() {
             </Card>
 
             <Card className="bg-blue-900/30 border-blue-800 hover:border-orange-500 transition-colors">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-sm font-medium text-blue-100">Turmas</CardTitle>
                 <Calendar className="h-4 w-4 text-orange-400" />
               </CardHeader>
@@ -161,7 +161,7 @@ export default function DashboardPage() {
             </Card>
 
             <Card className="bg-blue-900/30 border-blue-800 hover:border-orange-500 transition-colors">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-sm font-medium text-blue-100">Pagamentos</CardTitle>
                 <CreditCard className="h-4 w-4 text-orange-400" />
               </CardHeader>
