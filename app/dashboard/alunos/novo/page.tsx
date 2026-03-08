@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { ArrowLeft, AlertCircle } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 import Link from "next/link"
 import type { Formacao, Turma } from "@/lib/types"
 import { useAuth } from "@/hooks/use-auth"
@@ -24,7 +24,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 export default function NovoAlunoPage() {
   const router = useRouter()
   const { user: currentUser } = useAuth()
-  const { toast } = useToast()
   const [formacoes, setFormacoes] = useState<Formacao[]>([])
   const [turmas, setTurmas] = useState<Turma[]>([])
   const [loading, setLoading] = useState(false)
@@ -84,21 +83,13 @@ export default function NovoAlunoPage() {
     e.preventDefault()
     
     if (!currentUser?.centroId) {
-      toast({
-        title: "Erro",
-        description: "Centro não identificado",
-        variant: "destructive",
-      })
+      toast.error("Centro não identificado")
       return
     }
 
     // Validação básica - formação e turma são opcionais
     if (!formData.name || !formData.email || !formData.bi || !formData.birthDate || !formData.address) {
-      toast({
-        title: "Erro de validação",
-        description: "Preencha todos os dados pessoais obrigatórios",
-        variant: "destructive",
-      })
+      toast.error("Preencha todos os dados pessoais obrigatórios")
       return
     }
 
@@ -118,11 +109,7 @@ export default function NovoAlunoPage() {
 
       if (!novoAluno?.id) {
         console.error("Falha na criação do aluno")
-        toast({
-          title: "Erro",
-          description: "Não foi possível criar o aluno. Verifique os dados e tente novamente.",
-          variant: "destructive",
-        })
+        toast.error("Não foi possível criar o aluno. Verifique os dados e tente novamente.")
         setLoading(false)
         return
       }
@@ -131,11 +118,7 @@ export default function NovoAlunoPage() {
 
       // Se não há formação selecionada, apenas criar o aluno e voltar
       if (!formData.formacaoId || !formData.turmaId) {
-        toast({
-          title: "Sucesso",
-          description: "Aluno cadastrado com sucesso! Você pode adicionar matrículas depois.",
-          variant: "default",
-        })
+        toast.success("Aluno cadastrado com sucesso! Você pode adicionar matrículas depois.")
         router.push("/dashboard/alunos")
         return
       }
@@ -144,11 +127,7 @@ export default function NovoAlunoPage() {
       
       const price = getFormacaoPrice(formData.formacaoId)
       if (price <= 0) {
-        toast({
-          title: "Erro",
-          description: "Formação não encontrada ou preço inválido",
-          variant: "destructive",
-        })
+        toast.error("Formação não encontrada ou preço inválido")
         setLoading(false)
         return
       }
@@ -235,11 +214,7 @@ export default function NovoAlunoPage() {
         console.log("✨ Evento 'pagamento:created' disparado")
       }
 
-      toast({
-        title: "Sucesso",
-        description: "Aluno e matrícula criados com sucesso!",
-        variant: "default",
-      })
+      toast.success("Aluno e matrícula criados com sucesso!")
       setLoading(false)
       setTimeout(() => {
         console.log("6. Redirecionando para lista de alunos...")
@@ -261,11 +236,7 @@ export default function NovoAlunoPage() {
       }
 
       console.log("⚠️ Alertando usuário:", errorMessage)
-      toast({
-        title: "Erro ao cadastrar",
-        description: errorMessage,
-        variant: "destructive",
-      })
+      toast.error("Erro ao cadastrar")
     }
   }
 
@@ -281,11 +252,7 @@ export default function NovoAlunoPage() {
       })
 
       if (!pagamentoAtualizado) {
-        toast({
-          title: "Erro",
-          description: "Erro ao processar pagamento",
-          variant: "destructive",
-        })
+        toast.error("Erro ao processar pagamento")
         setPaymentLoading(false)
         return
       }
@@ -296,11 +263,7 @@ export default function NovoAlunoPage() {
         await pagamentoInstallmentService.markAsPaid(installments[0].id)
       }
 
-      toast({
-        title: "Sucesso",
-        description: "Primeira prestação paga com sucesso! Aluno cadastrado e primeira parcela registrada.",
-        variant: "default",
-      })
+      toast.success("Primeira prestação paga com sucesso! Aluno cadastrado e primeira parcela registrada.")
 
       setPaymentDialog({ open: false, alunoData: null, pagamentoId: null, installmentAmount: 0 })
       setPaymentLoading(false)
@@ -309,11 +272,7 @@ export default function NovoAlunoPage() {
   setTimeout(() => router.push("/dashboard/alunos"), 500)
     } catch (error) {
       console.error("Erro ao processar pagamento:", error)
-      toast({
-        title: "Erro",
-        description: "Erro ao processar pagamento",
-        variant: "destructive",
-      })
+      toast.error("Erro ao processar pagamento")
       setPaymentLoading(false)
     }
   }

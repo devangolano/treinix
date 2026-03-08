@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { useAuth } from "@/hooks/use-auth"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 import { certificadoService, alunoService, formacaoService, turmaService } from "@/lib/supabase-services"
 import { CentroSidebar } from "@/components/centro-sidebar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -15,13 +15,15 @@ import { ArrowLeft, Save, Trash2 } from "lucide-react"
 import Link from "next/link"
 import { Spinner } from "@/components/ui/spinner"
 import type { Certificado, Aluno, Formacao, Turma } from "@/lib/types"
+import { useConfirm } from "@/hooks/use-confirm"
+import { ConfirmDialog } from "@/components/confirm-dialog"
 
 export default function EditarCertificadoPage() {
+  const { openConfirm, open, options, handleConfirm, handleCancel } = useConfirm()
   const router = useRouter()
   const params = useParams()
   const certificadoId = params.id as string
   const { user, isLoading: authLoading } = useAuth()
-  const { toast } = useToast()
 
   const [certificado, setCertificado] = useState<Certificado | null>(null)
   const [alunos, setAlunos] = useState<Aluno[]>([])
@@ -82,11 +84,7 @@ export default function EditarCertificadoPage() {
     if (!certificado) return
 
     if (!notaFinal || isNaN(parseFloat(notaFinal))) {
-      toast({
-        title: "Erro de validação",
-        description: "Por favor, preencha a nota final com um número válido",
-        variant: "destructive",
-      })
+      toast.error("Por favor, preencha a nota final com um número válido")
       return
     }
 
@@ -100,26 +98,14 @@ export default function EditarCertificadoPage() {
       })
 
       if (success) {
-        toast({
-          title: "Sucesso",
-          description: "Certificado atualizado com sucesso!",
-          variant: "default",
-        })
+        toast.success("Certificado atualizado com sucesso!")
         router.push("/dashboard/certificados")
       } else {
-        toast({
-          title: "Erro",
-          description: "Erro ao atualizar certificado",
-          variant: "destructive",
-        })
+        toast.error("Erro ao atualizar certificado")
       }
     } catch (err) {
       console.error("Erro ao salvar certificado:", err)
-      toast({
-        title: "Erro",
-        description: "Erro ao atualizar certificado",
-        variant: "destructive",
-      })
+      toast.error("Erro ao atualizar certificado")
     } finally {
       setSalvando(false)
     }
@@ -128,7 +114,11 @@ export default function EditarCertificadoPage() {
   const handleDeletar = async () => {
     if (!certificado) return
 
-    if (!confirm("Tem certeza que deseja deletar este certificado? Esta ação não pode ser desfeita.")) {
+    const confirmed = await openConfirm({
+      title: "Tem certeza que deseja deletar este certificado? Esta ação não pode ser desfeita.",
+      isDangerous: true
+    })
+    if (!confirmed) {
       return
     }
 
@@ -138,26 +128,14 @@ export default function EditarCertificadoPage() {
       const success = await certificadoService.delete(certificado.id)
 
       if (success) {
-        toast({
-          title: "Sucesso",
-          description: "Certificado deletado com sucesso!",
-          variant: "default",
-        })
+        toast.success("Certificado deletado com sucesso!")
         router.push("/dashboard/certificados")
       } else {
-        toast({
-          title: "Erro",
-          description: "Erro ao deletar certificado",
-          variant: "destructive",
-        })
+        toast.error("Erro ao deletar certificado")
       }
     } catch (err) {
       console.error("Erro ao deletar certificado:", err)
-      toast({
-        title: "Erro",
-        description: "Erro ao deletar certificado",
-        variant: "destructive",
-      })
+      toast.error("Erro ao deletar certificado")
     } finally {
       setSalvando(false)
     }
@@ -360,6 +338,17 @@ export default function EditarCertificadoPage() {
           </Card>
         </div>
       </div>
+    
+      <ConfirmDialog
+        open={open}
+        title={options.title}
+        description={options.description}
+        confirmText={options.confirmText || "Deletar"}
+        cancelText={options.cancelText || "Cancelar"}
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
+        isDangerous={options.isDangerous}
+      />
     </div>
   )
 }

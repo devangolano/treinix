@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ArrowLeft } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import Link from "next/link"
 import { Spinner } from "@/components/ui/spinner"
@@ -22,7 +22,6 @@ export default function EditarUsuarioPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user: currentUser } = useAuth()
-  const { toast } = useToast()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [usuarioId, setUsuarioId] = useState<string | null>(null)
@@ -47,7 +46,7 @@ export default function EditarUsuarioPage() {
     // Obter o ID do usuário dos parâmetros
     const id = searchParams.get("id")
     if (!id) {
-      toast({ title: "Erro", description: "ID do usuário não fornecido", variant: "destructive" })
+      toast.error("ID do usuário não fornecido")
       router.push("/dashboard/usuarios")
       return
     }
@@ -62,7 +61,7 @@ export default function EditarUsuarioPage() {
       const usuario = await userService.getById(id)
       
       if (!usuario) {
-        toast({ title: "Erro", description: "Usuário não encontrado", variant: "destructive" })
+        toast.error("Usuário não encontrado")
         router.push("/dashboard/usuarios")
         return
       }
@@ -75,7 +74,7 @@ export default function EditarUsuarioPage() {
       })
     } catch (error) {
       console.error("Erro ao carregar usuário:", error)
-      toast({ title: "Erro ao carregar usuário", variant: "destructive" })
+      toast.error("Erro ao carregar usuário")
       router.push("/dashboard/usuarios")
     } finally {
       setLoading(false)
@@ -87,7 +86,7 @@ export default function EditarUsuarioPage() {
     if (!usuarioId) return
 
     if (!formData.phone.trim()) {
-      toast({ title: "Telefone é obrigatório", variant: "destructive" })
+      toast.error("Telefone é obrigatório")
       return
     }
 
@@ -101,15 +100,15 @@ export default function EditarUsuarioPage() {
       })
 
       if (!result) {
-        toast({ title: "Erro ao atualizar usuário", variant: "destructive" })
+        toast.error("Erro ao atualizar usuário")
         return
       }
 
-      toast({ title: "Usuário atualizado com sucesso!" })
+      toast.success("Usuário atualizado com sucesso!")
       router.push("/dashboard/usuarios")
     } catch (error) {
       console.error("Erro ao atualizar usuário:", error)
-      toast({ title: "Erro ao atualizar usuário", variant: "destructive" })
+      toast.error("Erro ao atualizar usuário")
     } finally {
       setSaving(false)
     }

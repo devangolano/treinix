@@ -13,14 +13,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ArrowLeft, Copy, Check } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import Link from "next/link"
+import { toast } from "sonner"
 
 export default function NovoUsuarioPage() {
   const router = useRouter()
   const { user: currentUser } = useAuth()
-  const { toast } = useToast()
   const [loading, setLoading] = useState(false)
   const [userCreated, setUserCreated] = useState<any>(null)
   const [copied, setCopied] = useState(false)
@@ -46,43 +45,106 @@ export default function NovoUsuarioPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!currentUser?.centroId) return
+    if (!currentUser?.centroId) {
+      toast.error("Centro não identificado")
+      return
+    }
+
+    // Validação básica
+    if (!formData.name.trim()) {
+      toast.error("Nome é obrigatório")
+      return
+    }
+
+    if (!formData.email.trim()) {
+      toast.error("Email é obrigatório")
+      return
+    }
 
     if (!formData.phone.trim()) {
-      toast({ title: "Telefone é obrigatório", variant: "destructive" })
+      toast.error("Telefone é obrigatório")
+      return
+    }
+
+    // Validar formato de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(formData.email)) {
+      toast.error("Email inválido. Verifique o formato do email")
       return
     }
 
     setLoading(true)
     try {
-      const result = await userService.create({
-        centroId: currentUser.centroId,
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone,
-        role: formData.role,
-        password: formData.password || undefined,
+      // Gerar uma senha temporária se não foi fornecida
+      const password = formData.password || Math.random().toString(36).slice(-12)
+      
+      const authResponse = await fetch('/api/usuarios/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.email,
+          password: password,
+        }),
       })
 
-      if (!result) {
-        toast({ title: "Erro ao criar usuário", variant: "destructive" })
+      if (!authResponse.ok) {
+        let errorData = { error: "Erro ao criar conta de autenticação" }
+        try {
+          errorData = await authResponse.json()
+        } catch (e) {
+          console.error("Erro ao fazer parse da resposta:", e)
+        }
+        console.error("❌ Erro ao criar usuário no Auth:", errorData)
+        toast.error(errorData.error || "Erro ao criar conta de autenticação")
+        setLoading(false)
         return
       }
 
-      setUserCreated(result)
-      toast({ 
-        title: "Usuário criado com sucesso!",
-        description: result.generatedPassword 
-          ? "Uma senha foi gerada automaticamente. Compartilhe-a com o usuário."
-          : "O usuário pode fazer login com a senha fornecida."
+      const authData = await authResponse.json()
+      const authUserId = authData.userId
+      console.log("✅ Usuário criado no Auth com ID:", authUserId)
+
+      // Passo 2: Criar registro na tabela users com o authUserId
+      console.log("2️⃣  Criando registro do usuário na tabela users...")
+      let result
+      try {
+        result = await userService.create({
+          centroId: currentUser.centroId,
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          role: formData.role,
+          authUserId: authUserId,
+          password: undefined, // Não enviar senha novamente
+        })
+
+        if (!result) {
+          console.error("❌ Erro ao criar registro na tabela users")
+          toast.error("Erro ao criar registro do usuário na base de dados. Verifique se as colunas auth_user_id e status existem na tabela users.")
+          setLoading(false)
+          return
+        }
+
+        console.log("✅ Usuário criado com sucesso na tabela:", result.id)
+      } catch (dbError) {
+        console.error("❌ Erro ao inserir na base de dados:", dbError)
+        const errorMessage = dbError instanceof Error ? dbError.message : "Erro desconhecido ao inserir na base de dados"
+        toast.error(`Erro ao criar registro: ${errorMessage}`)
+        setLoading(false)
+        return
+      }
+
+      setUserCreated({
+        ...result,
+        generatedPassword: !formData.password ? password : undefined,
       })
+      
+      toast.success(!formData.password 
+        ? "Usuário criado! Senha gerada automaticamente." 
+        : "Usuário criado com sucesso!")
     } catch (error) {
       console.error("Erro ao criar usuário:", error)
-      toast({ 
-        title: "Erro ao criar usuário", 
-        description: error instanceof Error ? error.message : "Erro desconhecido",
-        variant: "destructive" 
-      })
+      toast.error(error instanceof Error ? error.message : "Erro desconhecido")
     } finally {
       setLoading(false)
     }

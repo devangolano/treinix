@@ -25,7 +25,7 @@ import {
 import Link from "next/link"
 import type { Aluno, Formacao, Turma, Pagamento, Centro, Matricula } from "@/lib/types"
 import { useAuth } from "@/hooks/use-auth"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 import { generateAlunoPDF } from "@/lib/pdf-generator"
 
 export default function DetalhesAlunoPage() {
@@ -33,7 +33,6 @@ export default function DetalhesAlunoPage() {
   const params = useParams()
   const alunoId = params.id as string
   const { user: currentUser } = useAuth()
-  const { toast } = useToast()
   const [aluno, setAluno] = useState<Aluno | null>(null)
   const [centro, setCentro] = useState<Centro | null>(null)
   const [matriculas, setMatriculas] = useState<Matricula[]>([])
@@ -80,7 +79,7 @@ export default function DetalhesAlunoPage() {
       const alunoData = await alunoService.getById(alunoId)
       
       if (!alunoData) {
-        toast({ title: "Aluno não encontrado", variant: "destructive" })
+        toast.error("Aluno não encontrado")
         router.push("/dashboard/alunos")
         return
       }
@@ -154,7 +153,7 @@ export default function DetalhesAlunoPage() {
       setInstallmentStats(stats)
     } catch (error) {
       console.error("[DetalhesAluno] Erro ao carregar dados:", error)
-      toast({ title: "Erro ao carregar dados", variant: "destructive" })
+      toast.error("Erro ao carregar dados")
     } finally {
       setLoading(false)
     }
@@ -178,7 +177,7 @@ export default function DetalhesAlunoPage() {
       const turma = turmasMap[matricula.turmaId]
       
       if (!aluno || !formacao || !turma || !centro) {
-        toast({ title: "Erro", description: "Dados incompletos para gerar o PDF", variant: "destructive" })
+        toast.error("Dados incompletos para gerar o PDF")
         return
       }
 
@@ -222,10 +221,10 @@ export default function DetalhesAlunoPage() {
         systemPhone: "Contacto: 948324028",
       })
 
-      toast({ title: "Ficha baixada com sucesso!", description: `${aluno.name}_${formacao.name}.pdf` })
+      toast.success("Ficha baixada com sucesso!")
     } catch (error) {
       console.error("[DetalhesAluno] Erro ao gerar PDF:", error)
-      toast({ title: "Erro ao gerar PDF", variant: "destructive" })
+      toast.error("Erro ao gerar PDF")
     }
   }
 

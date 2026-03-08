@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { ArrowLeft } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 import Link from "next/link"
 import type { Formacao, Turma, Aluno } from "@/lib/types"
 import { useAuth } from "@/hooks/use-auth"
@@ -29,7 +29,6 @@ export default function NovaMatriculaPage() {
   const [turmas, setTurmas] = useState<Turma[]>([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
-  const { toast } = useToast()
 
   const [matriculaData, setMatriculaData] = useState({
     formacaoId: "",
@@ -60,7 +59,7 @@ export default function NovaMatriculaPage() {
       }
 
       if (!alunoData) {
-        toast({ title: "Aluno não encontrado", variant: "destructive" })
+        toast.error("Aluno não encontrado")
         router.push("/dashboard/alunos")
         return
       }
@@ -74,7 +73,7 @@ export default function NovaMatriculaPage() {
       setTurmas(turmasData)
     } catch (error) {
       console.error("Erro ao carregar dados:", error)
-      toast({ title: "Erro ao carregar dados", variant: "destructive" })
+      toast.error("Erro ao carregar dados")
     } finally {
       setLoading(false)
     }
@@ -90,12 +89,12 @@ export default function NovaMatriculaPage() {
     e.preventDefault()
 
     if (!currentUser?.centroId || !aluno) {
-      toast({ title: "Erro", description: "Dados incompletos", variant: "destructive" })
+      toast.error("Dados incompletos")
       return
     }
 
     if (!matriculaData.formacaoId || !matriculaData.turmaId) {
-      toast({ title: "Erro", description: "Selecione a formação e turma", variant: "destructive" })
+      toast.error("Selecione a formação e turma")
       return
     }
 
@@ -163,11 +162,11 @@ export default function NovaMatriculaPage() {
       )
       console.log("[NovaMatricula] ✓ Prestações criadas:", installments.length)
 
-      toast({ title: "Matrícula criada com sucesso!" })
+      toast.success("Matrícula criada com sucesso!")
       router.push("/dashboard/alunos")
     } catch (error) {
       console.error("Erro ao criar matrícula:", error)
-      toast({ title: "Erro ao criar matrícula", variant: "destructive" })
+      toast.error("Erro ao criar matrícula")
     } finally {
       setSubmitting(false)
     }

@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ArrowLeft } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 import Link from "next/link"
 import { useAuth } from "@/hooks/use-auth"
 
@@ -21,7 +21,6 @@ export default function NovaFormacaoPage() {
   const router = useRouter()
   const { user: currentUser } = useAuth()
   const [loading, setLoading] = useState(false)
-  const { toast } = useToast()
 
   const [formData, setFormData] = useState({
     name: "",
@@ -54,10 +53,10 @@ export default function NovaFormacaoPage() {
         category: formData.category,
         status: formData.status,
       })
-      toast({ title: "Formação criada com sucesso!" })
+      toast.success("Formação criada com sucesso!")
       router.push("/dashboard/formacoes")
     } catch (error) {
-      toast({ title: "Erro ao criar formação", variant: "destructive" })
+      toast.error("Erro ao criar formação")
     } finally {
       setLoading(false)
     }

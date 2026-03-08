@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/hooks/use-auth"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 import {
   certificadoService,
   alunoService,
@@ -26,7 +26,6 @@ import { ChevronLeft } from "lucide-react"
 export default function NovoCertificadoPage() {
   const router = useRouter()
   const { user, isLoading: authLoading } = useAuth()
-  const { toast } = useToast()
 
   const [formacoes, setFormacoes] = useState<Formacao[]>([])
   const [turmas, setTurmas] = useState<Turma[]>([])
@@ -75,11 +74,7 @@ export default function NovoCertificadoPage() {
       const message = err instanceof Error ? err.message : "Erro ao carregar dados"
       setError(message)
       console.error("Erro ao carregar dados:", err)
-      toast({
-        title: "Erro ao carregar",
-        description: message,
-        variant: "destructive",
-      })
+      toast.error(message)
     } finally {
       setLoading(false)
     }
@@ -107,29 +102,17 @@ export default function NovoCertificadoPage() {
 
   const handleSalvar = async () => {
     if (!formacaoSelecionada || !alunoSelecionado || !notaFinal) {
-      toast({
-        title: "Erro de validação",
-        description: "Por favor, preencha todos os campos obrigatórios",
-        variant: "destructive",
-      })
+      toast.error("Por favor, preencha todos os campos obrigatórios")
       return
     }
 
     if (parseFloat(notaFinal) < 0 || parseFloat(notaFinal) > 20) {
-      toast({
-        title: "Erro de validação",
-        description: "A nota final deve estar entre 0 e 20",
-        variant: "destructive",
-      })
+      toast.error("A nota final deve estar entre 0 e 20")
       return
     }
 
     if (!user?.centroId) {
-      toast({
-        title: "Erro",
-        description: "Centro não identificado",
-        variant: "destructive",
-      })
+      toast.error("Centro não identificado")
       return
     }
 
@@ -145,11 +128,7 @@ export default function NovoCertificadoPage() {
       )
 
       if (!matricula) {
-        toast({
-          title: "Erro",
-          description: "Matrícula não encontrada para este aluno",
-          variant: "destructive",
-        })
+        toast.error("Matrícula não encontrada para este aluno")
         return
       }
 
@@ -177,11 +156,7 @@ export default function NovoCertificadoPage() {
 
           if (uploadError) {
             console.error("Erro ao fazer upload do PDF:", uploadError)
-            toast({
-              title: "Erro ao fazer upload",
-              description: `${uploadError.message}\n\nCertificado será criado sem PDF.\n\nCertifique-se de que o bucket 'certificados-pdfs' existe no Supabase Storage.`,
-              variant: "destructive",
-            })
+            toast.error(`Erro ao fazer upload: ${uploadError.message}. Certificado será criado sem PDF.`)
           } else if (data) {
             // Obter URL pública do arquivo
             const { data: urlData } = supabase.storage
@@ -196,11 +171,7 @@ export default function NovoCertificadoPage() {
         } catch (err) {
           console.error("Erro ao processar PDF:", err)
           const errorMsg = err instanceof Error ? err.message : "Erro desconhecido"
-          toast({
-            title: "Erro ao processar PDF",
-            description: `${errorMsg}\n\nCertificado será criado sem PDF.`,
-            variant: "destructive",
-          })
+          toast.error(`Erro ao processar PDF: ${errorMsg}. Certificado será criado sem PDF.`)
         }
       }
 
@@ -218,26 +189,14 @@ export default function NovoCertificadoPage() {
       })
 
       if (novoCertificado) {
-        toast({
-          title: "Sucesso",
-          description: "Certificado emitido com sucesso!",
-          variant: "default",
-        })
+        toast.success("Certificado emitido com sucesso!")
         router.push("/dashboard/certificados")
       } else {
-        toast({
-          title: "Erro",
-          description: "Erro ao emitir certificado",
-          variant: "destructive",
-        })
+        toast.error("Erro ao emitir certificado")
       }
     } catch (err) {
       console.error("Erro ao salvar certificado:", err)
-      toast({
-        title: "Erro",
-        description: "Erro ao emitir certificado",
-        variant: "destructive",
-      })
+      toast.error("Erro ao emitir certificado")
     } finally {
       setSalvando(false)
     }

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/hooks/use-auth"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 import { alunoService, formacaoService, turmaService, pagamentoService, pagamentoInstallmentService, centroService, matriculaService } from "@/lib/supabase-services"
 import { CentroSidebar } from "@/components/centro-sidebar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -29,11 +29,13 @@ import type { Aluno, Formacao, Turma, Pagamento, Centro } from "@/lib/types"
 import { Spinner } from "@/components/ui/spinner"
 import Link from "next/link"
 import { Pagination } from "@/components/pagination"
+import { useConfirm } from "@/hooks/use-confirm"
+import { ConfirmDialog } from "@/components/confirm-dialog"
 
 export default function AlunosPage() {
   const router = useRouter()
   const { user, isLoading: authLoading } = useAuth()
-  const { toast } = useToast()
+  const { openConfirm, open, options, handleConfirm, handleCancel } = useConfirm()
   const [alunos, setAlunos] = useState<Aluno[]>([])
   const [formacoes, setFormacoes] = useState<Formacao[]>([])
   const [turmas, setTurmas] = useState<Turma[]>([])
@@ -128,42 +130,33 @@ export default function AlunosPage() {
       const message = err instanceof Error ? err.message : "Erro ao carregar dados"
       setError(message)
       console.error("Erro ao carregar dados:", err)
-      toast({
-        title: "Erro ao carregar",
-        description: message,
-        variant: "destructive",
-      })
+      toast.error("Erro ao carregar")
     } finally {
       setLoading(false)
     }
   }
 
   const handleDeleteAluno = async (id: string) => {
-    if (!confirm("Tem certeza que deseja deletar este aluno?")) return
+    const confirmed = await openConfirm({
+      title: "Deletar aluno?",
+      description: "Tem certeza que deseja deletar este aluno? Esta ação não pode ser desfeita.",
+      confirmText: "Deletar",
+      isDangerous: true,
+    })
+
+    if (!confirmed) return
 
     try {
       const success = await alunoService.delete(id)
       if (success) {
         setAlunos(alunos.filter((a) => a.id !== id))
-        toast({
-          title: "Sucesso",
-          description: "Aluno deletado com sucesso",
-          variant: "default",
-        })
+        toast.success("Aluno deletado com sucesso")
       } else {
-        toast({
-          title: "Erro",
-          description: "Erro ao deletar aluno",
-          variant: "destructive",
-        })
+        toast.error("Erro ao deletar aluno")
       }
     } catch (err) {
       console.error("Erro ao deletar aluno:", err)
-      toast({
-        title: "Erro",
-        description: "Erro ao deletar aluno",
-        variant: "destructive",
-      })
+      toast.error("Erro ao deletar aluno")
     }
   }
 
@@ -217,22 +210,21 @@ export default function AlunosPage() {
   }, [searchTerm, formacaoFilter, turmaFilter])
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Tem certeza que deseja excluir este aluno?")) return
+    const confirmed = await openConfirm({
+      title: "Excluir aluno?",
+      description: "Tem certeza que deseja excluir este aluno? Esta ação não pode ser desfeita.",
+      confirmText: "Deletar",
+      isDangerous: true,
+    })
+
+    if (!confirmed) return
 
     try {
       await alunoService.delete(id)
-      toast({
-        title: "Sucesso",
-        description: "Aluno excluído com sucesso!",
-        variant: "default",
-      })
+      toast.success("Aluno excluído com sucesso!")
       if (user?.centroId) loadData(user.centroId)
     } catch (error) {
-      toast({
-        title: "Erro",
-        description: "Erro ao excluir aluno",
-        variant: "destructive",
-      })
+      toast.error("Erro ao excluir aluno")
     }
   }
 
@@ -265,18 +257,10 @@ export default function AlunosPage() {
         systemPhone: "948324028",
       })
 
-      toast({
-        title: "Sucesso",
-        description: `Ficha de ${aluno.name} baixada com sucesso!`,
-        variant: "default",
-      })
+      toast.success("Sucesso")
     } catch (error) {
       console.error("[AlunosList] Erro ao gerar PDF:", error)
-      toast({
-        title: "Erro",
-        description: "Erro ao gerar PDF",
-        variant: "destructive",
-      })
+      toast.error("Erro ao gerar PDF")
     }
   }
 
@@ -575,6 +559,17 @@ export default function AlunosPage() {
             </CardContent>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={open}
+        title={options.title}
+        description={options.description}
+        confirmText={options.confirmText || "Deletar"}
+        cancelText={options.cancelText || "Cancelar"}
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
+        isDangerous={options.isDangerous}
+      />
     </div>
   )
 }

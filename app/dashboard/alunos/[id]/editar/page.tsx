@@ -5,7 +5,7 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { alunoService, formacaoService, turmaService } from "@/lib/supabase-services"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 import { CentroSidebar } from "@/components/centro-sidebar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -23,7 +23,6 @@ export default function EditarAlunoPage() {
   const params = useParams()
   const alunoId = params.id as string
   const { user: currentUser } = useAuth()
-  const { toast } = useToast()
   const [formacoes, setFormacoes] = useState<Formacao[]>([])
   const [turmas, setTurmas] = useState<Turma[]>([])
   const [loading, setLoading] = useState(true)
@@ -96,19 +95,11 @@ export default function EditarAlunoPage() {
         })
       } else {
         console.warn("[EditarAluno] Aluno não encontrado!")
-        toast({
-          title: "Erro",
-          description: "Aluno não encontrado!",
-          variant: "destructive",
-        })
+        toast.error("Aluno não encontrado!")
       }
     } catch (error) {
       console.error("[EditarAluno] Erro ao carregar dados:", error)
-      toast({
-        title: "Erro ao carregar",
-        description: "Erro ao carregar dados do aluno.",
-        variant: "destructive",
-      })
+      toast.error("Erro ao carregar dados do aluno.")
     } finally {
       setLoading(false)
     }
@@ -126,18 +117,10 @@ export default function EditarAlunoPage() {
         ...formData,
         birthDate: new Date(formData.birthDate),
       })
-      toast({
-        title: "Sucesso",
-        description: "Aluno atualizado com sucesso!",
-        variant: "default",
-      })
+      toast.success("Aluno atualizado com sucesso!")
       router.push("/dashboard/alunos")
     } catch (error) {
-      toast({
-        title: "Erro",
-        description: "Erro ao atualizar aluno",
-        variant: "destructive",
-      })
+      toast.error("Erro ao atualizar aluno")
       console.error("Erro ao atualizar aluno:", error)
     } finally {
       setLoading(false)

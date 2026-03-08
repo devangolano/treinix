@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ArrowLeft } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 import Link from "next/link"
 import { useAuth } from "@/hooks/use-auth"
 import { Spinner } from "@/components/ui/spinner"
@@ -27,7 +27,6 @@ export default function EditarFormacaoPage() {
   const [formacao, setFormacao] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
-  const { toast } = useToast()
 
   const [formData, setFormData] = useState({
     name: "",
@@ -62,12 +61,12 @@ export default function EditarFormacaoPage() {
           status: found.status,
         })
       } else {
-        toast({ title: "Formação não encontrada", variant: "destructive" })
+        toast.error("Formação não encontrada")
         router.push("/dashboard/formacoes")
       }
     } catch (error) {
       console.error("Erro ao carregar formação:", error)
-      toast({ title: "Erro ao carregar formação", variant: "destructive" })
+      toast.error("Erro ao carregar formação")
     } finally {
       setLoading(false)
     }
@@ -87,10 +86,10 @@ export default function EditarFormacaoPage() {
         category: formData.category,
         status: formData.status,
       })
-      toast({ title: "Formação atualizada com sucesso!" })
+      toast.success("Formação atualizada com sucesso!")
       router.push("/dashboard/formacoes")
     } catch (error) {
-      toast({ title: "Erro ao atualizar formação", variant: "destructive" })
+      toast.error("Erro ao atualizar formação")
     } finally {
       setSubmitting(false)
     }

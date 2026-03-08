@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/hooks/use-auth"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 import { certificadoService, alunoService, formacaoService, turmaService } from "@/lib/supabase-services"
 import { CentroSidebar } from "@/components/centro-sidebar"
 import { Card, CardContent } from "@/components/ui/card"
@@ -24,11 +24,13 @@ import type { Certificado, Aluno, Formacao, Turma } from "@/lib/types"
 import { Spinner } from "@/components/ui/spinner"
 import Link from "next/link"
 import { Pagination } from "@/components/pagination"
+import { useConfirm } from "@/hooks/use-confirm"
+import { ConfirmDialog } from "@/components/confirm-dialog"
 
 export default function CertificadosPage() {
+  const { openConfirm, open, options, handleConfirm, handleCancel } = useConfirm()
   const router = useRouter()
   const { user, isLoading: authLoading } = useAuth()
-  const { toast } = useToast()
   const [certificados, setCertificados] = useState<Certificado[]>([])
   const [alunos, setAlunos] = useState<Aluno[]>([])
   const [formacoes, setFormacoes] = useState<Formacao[]>([])
@@ -71,43 +73,30 @@ export default function CertificadosPage() {
     } catch (err) {
       const message = err instanceof Error ? err.message : "Erro ao carregar dados"
       setError(message)
-      console.error("Erro ao carregar dados:", err)
-      toast({
-        title: "Erro ao carregar",
-        description: message,
-        variant: "destructive",
-      })
+      toast.error("Erro ao carregar dados. Tente novamente.")
     } finally {
       setLoading(false)
     }
   }
 
   const handleDeleteCertificado = async (id: string) => {
-    if (!confirm("Tem certeza que deseja deletar este certificado?")) return
+    const confirmed = await openConfirm({
+      title: "Tem certeza que deseja deletar este certificado?",
+      isDangerous: true
+    })
+    if (!confirmed) return
 
     try {
       const success = await certificadoService.delete(id)
       if (success) {
         setCertificados(certificados.filter((c) => c.id !== id))
-        toast({
-          title: "Sucesso",
-          description: "Certificado deletado com sucesso",
-          variant: "default",
-        })
+        toast.success("Certificado deletado com sucesso!")
       } else {
-        toast({
-          title: "Erro",
-          description: "Erro ao deletar certificado",
-          variant: "destructive",
-        })
+        toast.error("Erro ao deletar certificado. Tente novamente.")
       }
     } catch (err) {
       console.error("Erro ao deletar certificado:", err)
-      toast({
-        title: "Erro",
-        description: "Erro ao deletar certificado",
-        variant: "destructive",
-      })
+      toast.error("Erro ao deletar certificado. Tente novamente.")
     }
   }
 
@@ -127,19 +116,11 @@ export default function CertificadosPage() {
             c.id === certificadoId ? { ...c, estado: novoEstado } : c
           )
         )
-        toast({
-          title: "Sucesso",
-          description: "Estado do certificado atualizado com sucesso",
-          variant: "default",
-        })
+        toast.success("Estado do certificado atualizado com sucesso!")
       }
     } catch (err) {
       console.error("Erro ao atualizar estado:", err)
-      toast({
-        title: "Erro",
-        description: "Erro ao atualizar estado do certificado",
-        variant: "destructive",
-      })
+      toast.error("Erro ao atualizar estado do certificado")
     }
   }
 
@@ -149,11 +130,7 @@ export default function CertificadosPage() {
 
     const aluno = alunos.find((a) => a.id === certificado.alunoId)
     if (!aluno || !aluno.phone) {
-      toast({
-        title: "Erro",
-        description: "Número de telefone do aluno não encontrado",
-        variant: "destructive",
-      })
+      toast.error("Número de telefone do aluno não encontrado.")
       return
     }
 
@@ -184,12 +161,7 @@ export default function CertificadosPage() {
       document.body.removeChild(link)
       window.URL.revokeObjectURL(url)
     } catch (error) {
-      console.error("Erro ao fazer download:", error)
-      toast({
-        title: "Erro",
-        description: "Erro ao fazer download do PDF. Tente novamente.",
-        variant: "destructive",
-      })
+      toast.error("Erro ao fazer download do PDF. Tente novamente.")
     }
   }
 
@@ -485,11 +457,7 @@ export default function CertificadosPage() {
                             if (cert.pdfUrl) {
                               window.open(cert.pdfUrl, "_blank")
                             } else {
-                              toast({
-                                title: "Aviso",
-                                description: "PDF não disponível",
-                                variant: "destructive",
-                              })
+                              toast.error("PDF não disponível para visualização.")
                             }
                           }}
                           className="flex-1 bg-purple-600 hover:bg-purple-700 text-white h-9 text-xs"
@@ -506,19 +474,11 @@ export default function CertificadosPage() {
                               if (cert.pdfUrl) {
                                 handleDownloadPDF(cert.pdfUrl, getNomeAluno(cert.alunoId))
                               } else {
-                                toast({
-                                  title: "Aviso",
-                                  description: "PDF não disponível para download",
-                                  variant: "destructive",
-                                })
+                                toast.error("PDF não disponível para download.")
                               }
                             } catch (error) {
                               console.error("Erro ao fazer download:", error)
-                              toast({
-                                title: "Erro",
-                                description: "Erro ao fazer download do PDF",
-                                variant: "destructive",
-                              })
+                              toast.error("Erro ao fazer download do PDF")
                             }
                           }}
                           className="flex-1 bg-blue-600 hover:bg-blue-700 text-white h-9 text-xs"
@@ -556,6 +516,17 @@ export default function CertificadosPage() {
           )}
         </div>
       </div>
+    
+      <ConfirmDialog
+        open={open}
+        title={options.title}
+        description={options.description}
+        confirmText={options.confirmText || "Deletar"}
+        cancelText={options.cancelText || "Cancelar"}
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
+        isDangerous={options.isDangerous}
+      />
     </div>
   )
 }

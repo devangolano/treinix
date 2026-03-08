@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ArrowLeft } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 import Link from "next/link"
 import type { Formacao } from "@/lib/types"
 import { useAuth } from "@/hooks/use-auth"
@@ -24,7 +24,6 @@ export default function EditarTurmaPage() {
   const { user: currentUser } = useAuth()
   const [formacoes, setFormacoes] = useState<Formacao[]>([])
   const [loading, setLoading] = useState(false)
-  const { toast } = useToast()
 
   const [formData, setFormData] = useState({
     formacaoId: "",
@@ -65,7 +64,7 @@ export default function EditarTurmaPage() {
       }
     } catch (error) {
       console.error("Erro ao carregar dados:", error)
-      toast({ title: "Erro ao carregar dados", variant: "destructive" })
+      toast.error("Erro ao carregar dados")
     }
   }
 
@@ -85,10 +84,10 @@ export default function EditarTurmaPage() {
         currentStudents: Number(formData.currentStudents),
         status: formData.status,
       })
-      toast({ title: "Turma atualizada com sucesso!" })
+      toast.success("Turma atualizada com sucesso!")
       router.push("/dashboard/turmas")
     } catch (error) {
-      toast({ title: "Erro ao atualizar turma", variant: "destructive" })
+      toast.error("Erro ao atualizar turma")
     } finally {
       setLoading(false)
     }

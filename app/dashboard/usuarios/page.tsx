@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Plus, UserCog, Mail, Search, Filter, Trash2, Edit2, MoreVertical } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 import type { User } from "@/lib/types"
 import Link from "next/link"
 import { useAuth } from "@/hooks/use-auth"
@@ -54,7 +54,6 @@ export default function UsuariosPage() {
   const [deletando, setDeletando] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(10)
-  const { toast } = useToast()
 
   useEffect(() => {
     if (!currentUser || !currentUser.centroId) {
@@ -78,11 +77,7 @@ export default function UsuariosPage() {
       setUsuarios(data)
     } catch (error) {
       console.error("Erro ao carregar usuários:", error)
-      toast({
-        title: "Erro",
-        description: "Não foi possível carregar os usuários",
-        variant: "destructive",
-      })
+      toast.error("Não foi possível carregar os usuários")
     } finally {
       setLoading(false)
     }
@@ -124,10 +119,7 @@ export default function UsuariosPage() {
       setDeletando(true)
       const success = await userService.delete(usuarioADeletar.id)
       if (success) {
-        toast({
-          title: "Usuário deletado com sucesso!",
-          description: "O usuário foi removido do sistema.",
-        })
+        toast.success("O usuário foi removido do sistema.")
         setDeleteDialogOpen(false)
         setUsuarioADeletar(null)
         // Recarregar a lista de usuários
@@ -135,19 +127,11 @@ export default function UsuariosPage() {
           await loadUsuarios(currentUser.centroId)
         }
       } else {
-        toast({
-          title: "Erro ao deletar usuário",
-          description: "Não foi possível deletar o usuário.",
-          variant: "destructive",
-        })
+        toast.error("Não foi possível deletar o usuário.")
       }
     } catch (error) {
       console.error("Erro ao deletar usuário:", error)
-      toast({
-        title: "Erro ao deletar usuário",
-        description: "Ocorreu um erro ao tentar deletar o usuário.",
-        variant: "destructive",
-      })
+      toast.error("Ocorreu um erro ao tentar deletar o usuário.")
     } finally {
       setDeletando(false)
     }

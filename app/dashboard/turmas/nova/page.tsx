@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ArrowLeft } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 import Link from "next/link"
 import type { Formacao } from "@/lib/types"
 import { useAuth } from "@/hooks/use-auth"
@@ -22,7 +22,6 @@ export default function NovaTurmaPage() {
   const { user: currentUser } = useAuth()
   const [formacoes, setFormacoes] = useState<Formacao[]>([])
   const [loading, setLoading] = useState(false)
-  const { toast } = useToast()
 
   const [formData, setFormData] = useState({
     formacaoId: "",
@@ -49,7 +48,7 @@ export default function NovaTurmaPage() {
       setFormacoes(formacoesData)
     } catch (error) {
       console.error("Erro ao carregar formações:", error)
-      toast({ title: "Erro ao carregar formações", variant: "destructive" })
+      toast.error("Erro ao carregar formações")
     }
   }
 
@@ -70,10 +69,10 @@ export default function NovaTurmaPage() {
         currentStudents: Number(formData.currentStudents),
         status: formData.status,
       })
-      toast({ title: "Turma criada com sucesso!" })
+      toast.success("Turma criada com sucesso!")
       router.push("/dashboard/turmas")
     } catch (error) {
-      toast({ title: "Erro ao criar turma", variant: "destructive" })
+      toast.error("Erro ao criar turma")
     } finally {
       setLoading(false)
     }

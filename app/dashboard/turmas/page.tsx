@@ -12,16 +12,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Plus, Pencil, Trash2, Calendar, UsersIcon, Clock, Search, Filter, MoreVertical } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 import type { Turma, Formacao } from "@/lib/types"
 import Link from "next/link"
 import { useAuth } from "@/hooks/use-auth"
 import { Spinner } from "@/components/ui/spinner"
 import { Pagination } from "@/components/pagination"
+import { useConfirm } from "@/hooks/use-confirm"
+import { ConfirmDialog } from "@/components/confirm-dialog"
 
 export default function TurmasPage() {
   const router = useRouter()
   const { user: currentUser } = useAuth()
+  const { openConfirm, open, options, handleConfirm, handleCancel } = useConfirm()
   const [turmas, setTurmas] = useState<Turma[]>([])
   const [formacoes, setFormacoes] = useState<Formacao[]>([])
   const [alunos, setAlunos] = useState<any[]>([])
@@ -30,7 +33,6 @@ export default function TurmasPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(10)
-  const { toast } = useToast()
 
   useEffect(() => {
     if (!currentUser || !currentUser.centroId) {
@@ -70,7 +72,7 @@ export default function TurmasPage() {
       setFormacoes(formacoesData)
     } catch (error) {
       console.error("Erro ao carregar dados:", error)
-      toast({ title: "Erro ao carregar dados", variant: "destructive" })
+      toast.error("Erro ao carregar dados")
     } finally {
       setLoading(false)
     }
@@ -94,14 +96,21 @@ export default function TurmasPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Tem certeza que deseja excluir esta turma?")) return
+    const confirmed = await openConfirm({
+      title: "Excluir turma?",
+      description: "Tem certeza que deseja excluir esta turma? Esta ação não pode ser desfeita.",
+      confirmText: "Deletar",
+      isDangerous: true,
+    })
+
+    if (!confirmed) return
 
     try {
       await turmaService.delete(id)
-      toast({ title: "Turma excluída com sucesso!" })
+      toast.success("Turma excluída com sucesso!")
       if (currentUser?.centroId) loadData(currentUser.centroId)
     } catch (error) {
-      toast({ title: "Erro ao excluir turma", variant: "destructive" })
+      toast.error("Erro ao excluir turma")
     }
   }
 
@@ -348,6 +357,17 @@ export default function TurmasPage() {
             </CardContent>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={open}
+        title={options.title}
+        description={options.description}
+        confirmText={options.confirmText || "Deletar"}
+        cancelText={options.cancelText || "Cancelar"}
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
+        isDangerous={options.isDangerous}
+      />
     </div>
   )
 }

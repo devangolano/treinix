@@ -21,23 +21,25 @@ import {
   Filter,
   MoreVertical,
 } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 import type { Formacao } from "@/lib/types"
 import Link from "next/link"
 import { useAuth } from "@/hooks/use-auth"
 import { Spinner } from "@/components/ui/spinner"
 import { Pagination } from "@/components/pagination"
+import { useConfirm } from "@/hooks/use-confirm"
+import { ConfirmDialog } from "@/components/confirm-dialog"
 
 export default function FormacoesPage() {
   const router = useRouter()
   const { user: currentUser } = useAuth()
+  const { openConfirm, open, options, handleConfirm, handleCancel } = useConfirm()
   const [formacoes, setFormacoes] = useState<Formacao[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(10)
-  const { toast } = useToast()
 
   useEffect(() => {
     if (!currentUser || !currentUser.centroId) {
@@ -54,21 +56,28 @@ export default function FormacoesPage() {
       setFormacoes(data)
     } catch (error) {
       console.error("Erro ao carregar formações:", error)
-      toast({ title: "Erro ao carregar formações", variant: "destructive" })
+      toast.error("Erro ao carregar formações")
     } finally {
       setLoading(false)
     }
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Tem certeza que deseja excluir esta formação?")) return
+    const confirmed = await openConfirm({
+      title: "Excluir formação?",
+      description: "Tem certeza que deseja excluir esta formação? Esta ação não pode ser desfeita.",
+      confirmText: "Deletar",
+      isDangerous: true,
+    })
+
+    if (!confirmed) return
 
     try {
       await formacaoService.delete(id)
-      toast({ title: "Formação excluída com sucesso!" })
+      toast.success("Formação excluída com sucesso!")
       if (currentUser?.centroId) loadFormacoes(currentUser.centroId)
     } catch (error) {
-      toast({ title: "Erro ao excluir formação", variant: "destructive" })
+      toast.error("Erro ao excluir formação")
     }
   }
 
@@ -326,6 +335,17 @@ export default function FormacoesPage() {
             </CardContent>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={open}
+        title={options.title}
+        description={options.description}
+        confirmText={options.confirmText || "Deletar"}
+        cancelText={options.cancelText || "Cancelar"}
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
+        isDangerous={options.isDangerous}
+      />
     </div>
   )
 }

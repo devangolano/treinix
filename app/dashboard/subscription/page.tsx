@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { CentroSidebar } from "@/components/centro-sidebar"
 import { Calendar, Clock } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 import type { Subscription } from "@/lib/types"
 import { useAuth } from "@/hooks/use-auth"
 import { Input } from "@/components/ui/input"
@@ -24,7 +24,6 @@ export default function SubscriptionPage() {
   const [centroData, setCentroData] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [selectedMonths, setSelectedMonths] = useState<number>(1)
-  const { toast } = useToast()
 
   useEffect(() => {
     if (!currentUser?.centroId) {
@@ -53,7 +52,7 @@ export default function SubscriptionPage() {
       setSubscriptions(data)
     } catch (error) {
       console.error("Erro ao carregar subscrições:", error)
-      toast({ title: "Erro ao carregar subscrições", variant: "destructive" })
+      toast.error("Erro ao carregar subscrições")
     } finally {
       setLoading(false)
     }
@@ -147,19 +146,12 @@ export default function SubscriptionPage() {
 
       if (newSubscription) {
         await loadSubscriptions(currentUser.centroId)
-        toast({
-          title: "Subscrição solicitada com sucesso!",
-          description: "Sua solicitação de subscrição está pendente de aprovação pelo super admin.",
-        })
+        toast.success("Sua solicitação de subscrição está pendente de aprovação pelo super admin.")
         setSelectedMonths(1)
       }
     } catch (error) {
       console.error("Erro ao contratar subscrição:", error)
-      toast({
-        title: "Erro ao contratar subscrição",
-        description: "Não foi possível processar sua solicitação.",
-        variant: "destructive",
-      })
+      toast.error("Não foi possível processar sua solicitação.")
     } finally {
       setLoading(false)
     }
