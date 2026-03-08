@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/hooks/use-auth"
+import { useToast } from "@/hooks/use-toast"
 import { alunoService, formacaoService, turmaService, pagamentoService, pagamentoInstallmentService, centroService, matriculaService } from "@/lib/supabase-services"
 import { CentroSidebar } from "@/components/centro-sidebar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -32,6 +33,7 @@ import { Pagination } from "@/components/pagination"
 export default function AlunosPage() {
   const router = useRouter()
   const { user, isLoading: authLoading } = useAuth()
+  const { toast } = useToast()
   const [alunos, setAlunos] = useState<Aluno[]>([])
   const [formacoes, setFormacoes] = useState<Formacao[]>([])
   const [turmas, setTurmas] = useState<Turma[]>([])
@@ -126,7 +128,11 @@ export default function AlunosPage() {
       const message = err instanceof Error ? err.message : "Erro ao carregar dados"
       setError(message)
       console.error("Erro ao carregar dados:", err)
-      alert(message)
+      toast({
+        title: "Erro ao carregar",
+        description: message,
+        variant: "destructive",
+      })
     } finally {
       setLoading(false)
     }
@@ -139,13 +145,25 @@ export default function AlunosPage() {
       const success = await alunoService.delete(id)
       if (success) {
         setAlunos(alunos.filter((a) => a.id !== id))
-        alert("Aluno deletado com sucesso")
+        toast({
+          title: "Sucesso",
+          description: "Aluno deletado com sucesso",
+          variant: "default",
+        })
       } else {
-        alert("Erro ao deletar aluno")
+        toast({
+          title: "Erro",
+          description: "Erro ao deletar aluno",
+          variant: "destructive",
+        })
       }
     } catch (err) {
       console.error("Erro ao deletar aluno:", err)
-      alert("Erro ao deletar aluno")
+      toast({
+        title: "Erro",
+        description: "Erro ao deletar aluno",
+        variant: "destructive",
+      })
     }
   }
 
@@ -203,10 +221,18 @@ export default function AlunosPage() {
 
     try {
       await alunoService.delete(id)
-      alert("Aluno excluído com sucesso!")
+      toast({
+        title: "Sucesso",
+        description: "Aluno excluído com sucesso!",
+        variant: "default",
+      })
       if (user?.centroId) loadData(user.centroId)
     } catch (error) {
-      alert("Erro ao excluir aluno")
+      toast({
+        title: "Erro",
+        description: "Erro ao excluir aluno",
+        variant: "destructive",
+      })
     }
   }
 
@@ -239,10 +265,18 @@ export default function AlunosPage() {
         systemPhone: "948324028",
       })
 
-      alert(`Ficha de ${aluno.name} baixada com sucesso!`)
+      toast({
+        title: "Sucesso",
+        description: `Ficha de ${aluno.name} baixada com sucesso!`,
+        variant: "default",
+      })
     } catch (error) {
       console.error("[AlunosList] Erro ao gerar PDF:", error)
-      alert("Erro ao gerar PDF")
+      toast({
+        title: "Erro",
+        description: "Erro ao gerar PDF",
+        variant: "destructive",
+      })
     }
   }
 

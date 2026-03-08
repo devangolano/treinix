@@ -24,6 +24,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 export default function NovoAlunoPage() {
   const router = useRouter()
   const { user: currentUser } = useAuth()
+  const { toast } = useToast()
   const [formacoes, setFormacoes] = useState<Formacao[]>([])
   const [turmas, setTurmas] = useState<Turma[]>([])
   const [loading, setLoading] = useState(false)
@@ -83,13 +84,21 @@ export default function NovoAlunoPage() {
     e.preventDefault()
     
     if (!currentUser?.centroId) {
-      alert("Centro não identificado")
+      toast({
+        title: "Erro",
+        description: "Centro não identificado",
+        variant: "destructive",
+      })
       return
     }
 
     // Validação básica - formação e turma são opcionais
     if (!formData.name || !formData.email || !formData.bi || !formData.birthDate || !formData.address) {
-      alert("Preencha todos os dados pessoais obrigatórios")
+      toast({
+        title: "Erro de validação",
+        description: "Preencha todos os dados pessoais obrigatórios",
+        variant: "destructive",
+      })
       return
     }
 
@@ -109,7 +118,11 @@ export default function NovoAlunoPage() {
 
       if (!novoAluno?.id) {
         console.error("Falha na criação do aluno")
-        alert("Não foi possível criar o aluno. Verifique os dados e tente novamente.")
+        toast({
+          title: "Erro",
+          description: "Não foi possível criar o aluno. Verifique os dados e tente novamente.",
+          variant: "destructive",
+        })
         setLoading(false)
         return
       }
@@ -118,7 +131,11 @@ export default function NovoAlunoPage() {
 
       // Se não há formação selecionada, apenas criar o aluno e voltar
       if (!formData.formacaoId || !formData.turmaId) {
-        alert("Aluno cadastrado com sucesso! Você pode adicionar matrículas depois.")
+        toast({
+          title: "Sucesso",
+          description: "Aluno cadastrado com sucesso! Você pode adicionar matrículas depois.",
+          variant: "default",
+        })
         router.push("/dashboard/alunos")
         return
       }
@@ -127,7 +144,11 @@ export default function NovoAlunoPage() {
       
       const price = getFormacaoPrice(formData.formacaoId)
       if (price <= 0) {
-        alert("Formação não encontrada ou preço inválido")
+        toast({
+          title: "Erro",
+          description: "Formação não encontrada ou preço inválido",
+          variant: "destructive",
+        })
         setLoading(false)
         return
       }
@@ -214,7 +235,11 @@ export default function NovoAlunoPage() {
         console.log("✨ Evento 'pagamento:created' disparado")
       }
 
-      alert("Aluno e matrícula criados com sucesso!")
+      toast({
+        title: "Sucesso",
+        description: "Aluno e matrícula criados com sucesso!",
+        variant: "default",
+      })
       setLoading(false)
       setTimeout(() => {
         console.log("6. Redirecionando para lista de alunos...")
@@ -236,7 +261,11 @@ export default function NovoAlunoPage() {
       }
 
       console.log("⚠️ Alertando usuário:", errorMessage)
-      alert(errorMessage)
+      toast({
+        title: "Erro ao cadastrar",
+        description: errorMessage,
+        variant: "destructive",
+      })
     }
   }
 
@@ -252,7 +281,11 @@ export default function NovoAlunoPage() {
       })
 
       if (!pagamentoAtualizado) {
-        alert("Erro ao processar pagamento")
+        toast({
+          title: "Erro",
+          description: "Erro ao processar pagamento",
+          variant: "destructive",
+        })
         setPaymentLoading(false)
         return
       }
@@ -263,7 +296,11 @@ export default function NovoAlunoPage() {
         await pagamentoInstallmentService.markAsPaid(installments[0].id)
       }
 
-      alert("Primeira prestação paga com sucesso! Aluno cadastrado e primeira parcela registrada.")
+      toast({
+        title: "Sucesso",
+        description: "Primeira prestação paga com sucesso! Aluno cadastrado e primeira parcela registrada.",
+        variant: "default",
+      })
 
       setPaymentDialog({ open: false, alunoData: null, pagamentoId: null, installmentAmount: 0 })
       setPaymentLoading(false)
@@ -272,7 +309,11 @@ export default function NovoAlunoPage() {
   setTimeout(() => router.push("/dashboard/alunos"), 500)
     } catch (error) {
       console.error("Erro ao processar pagamento:", error)
-      alert("Erro ao processar pagamento")
+      toast({
+        title: "Erro",
+        description: "Erro ao processar pagamento",
+        variant: "destructive",
+      })
       setPaymentLoading(false)
     }
   }

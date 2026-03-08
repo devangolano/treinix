@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { useAuth } from "@/hooks/use-auth"
+import { useToast } from "@/hooks/use-toast"
 import { certificadoService, alunoService, formacaoService, turmaService } from "@/lib/supabase-services"
 import { CentroSidebar } from "@/components/centro-sidebar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -20,6 +21,7 @@ export default function EditarCertificadoPage() {
   const params = useParams()
   const certificadoId = params.id as string
   const { user, isLoading: authLoading } = useAuth()
+  const { toast } = useToast()
 
   const [certificado, setCertificado] = useState<Certificado | null>(null)
   const [alunos, setAlunos] = useState<Aluno[]>([])
@@ -80,7 +82,11 @@ export default function EditarCertificadoPage() {
     if (!certificado) return
 
     if (!notaFinal || isNaN(parseFloat(notaFinal))) {
-      alert("Por favor, preencha a nota final com um número válido")
+      toast({
+        title: "Erro de validação",
+        description: "Por favor, preencha a nota final com um número válido",
+        variant: "destructive",
+      })
       return
     }
 
@@ -94,14 +100,26 @@ export default function EditarCertificadoPage() {
       })
 
       if (success) {
-        alert("Certificado atualizado com sucesso!")
+        toast({
+          title: "Sucesso",
+          description: "Certificado atualizado com sucesso!",
+          variant: "default",
+        })
         router.push("/dashboard/certificados")
       } else {
-        alert("Erro ao atualizar certificado")
+        toast({
+          title: "Erro",
+          description: "Erro ao atualizar certificado",
+          variant: "destructive",
+        })
       }
     } catch (err) {
       console.error("Erro ao salvar certificado:", err)
-      alert("Erro ao atualizar certificado")
+      toast({
+        title: "Erro",
+        description: "Erro ao atualizar certificado",
+        variant: "destructive",
+      })
     } finally {
       setSalvando(false)
     }
@@ -120,14 +138,26 @@ export default function EditarCertificadoPage() {
       const success = await certificadoService.delete(certificado.id)
 
       if (success) {
-        alert("Certificado deletado com sucesso!")
+        toast({
+          title: "Sucesso",
+          description: "Certificado deletado com sucesso!",
+          variant: "default",
+        })
         router.push("/dashboard/certificados")
       } else {
-        alert("Erro ao deletar certificado")
+        toast({
+          title: "Erro",
+          description: "Erro ao deletar certificado",
+          variant: "destructive",
+        })
       }
     } catch (err) {
       console.error("Erro ao deletar certificado:", err)
-      alert("Erro ao deletar certificado")
+      toast({
+        title: "Erro",
+        description: "Erro ao deletar certificado",
+        variant: "destructive",
+      })
     } finally {
       setSalvando(false)
     }

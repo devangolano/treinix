@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { pagamentoService, alunoService, turmaService, pagamentoInstallmentService } from "@/lib/supabase-services"
+import { useToast } from "@/hooks/use-toast"
 import { CentroSidebar } from "@/components/centro-sidebar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -22,6 +23,7 @@ import { Pagination } from "@/components/pagination"
 export default function PagamentosPage() {
   const router = useRouter()
   const { user: currentUser } = useAuth()
+  const { toast } = useToast()
   const [pagamentos, setPagamentos] = useState<Pagamento[]>([])
   const [alunos, setAlunos] = useState<Aluno[]>([])
   const [turmas, setTurmas] = useState<Turma[]>([])
@@ -95,7 +97,11 @@ export default function PagamentosPage() {
       setInstallmentStats(stats)
     } catch (error) {
       console.error("Erro ao carregar dados:", error)
-      alert("Erro ao carregar dados")
+      toast({
+        title: "Erro ao carregar",
+        description: "Erro ao carregar dados",
+        variant: "destructive",
+      })
     }
   }
 
@@ -118,7 +124,11 @@ export default function PagamentosPage() {
       setInstallmentsDialog({ open: true, pagamento, installments })
     } catch (error) {
       console.error("Erro ao carregar prestações:", error)
-      alert("Erro ao carregar prestações")
+      toast({
+        title: "Erro ao carregar",
+        description: "Erro ao carregar prestações",
+        variant: "destructive",
+      })
     }
   }
 
@@ -140,13 +150,21 @@ export default function PagamentosPage() {
             status: "completed",
             installmentsPaid: installmentsDialog.pagamento.installments,
           })
-          alert("Pagamento completo registrado com sucesso!")
+          toast({
+            title: "Sucesso",
+            description: "Pagamento completo registrado com sucesso!",
+            variant: "default",
+          })
         } else {
           const updateResult = await pagamentoService.update(installmentsDialog.pagamento.id, {
             status: "partial",
             installmentsPaid: paidCount,
           })
-          alert("Prestação paga com sucesso!")
+          toast({
+            title: "Sucesso",
+            description: "Prestação paga com sucesso!",
+            variant: "default",
+          })
         }
       }
       
@@ -172,7 +190,11 @@ export default function PagamentosPage() {
       }
     } catch (error) {
       console.error("Erro ao pagar prestação:", error)
-      alert("Erro ao pagar prestação")
+      toast({
+        title: "Erro",
+        description: "Erro ao pagar prestação",
+        variant: "destructive",
+      })
     } finally {
       setLoading(false)
     }
@@ -186,7 +208,11 @@ export default function PagamentosPage() {
       const unpaidInstallments = installmentsDialog.installments.filter((i) => i.status !== "paid")
 
       if (unpaidInstallments.length === 0) {
-        alert("Todas as prestações já foram pagas")
+        toast({
+          title: "Aviso",
+          description: "Todas as prestações já foram pagas",
+          variant: "destructive",
+        })
         setLoading(false)
         return
       }
@@ -205,9 +231,17 @@ export default function PagamentosPage() {
           status: "completed",
           installmentsPaid: installmentsDialog.pagamento.installments,
         })
-        alert("Todas as prestações foram pagas! Pagamento completo.")
+        toast({
+          title: "Sucesso",
+          description: "Todas as prestações foram pagas! Pagamento completo.",
+          variant: "default",
+        })
       } else {
-        alert(`Prestação ${nextInstallment.installmentNumber} assinada com sucesso!`)
+        toast({
+          title: "Sucesso",
+          description: `Prestação ${nextInstallment.installmentNumber} assinada com sucesso!`,
+          variant: "default",
+        })
       }
 
       if (currentUser?.centroId) {
@@ -223,7 +257,11 @@ export default function PagamentosPage() {
       }
     } catch (error) {
       console.error("Erro ao assinar próxima prestação:", error)
-      alert("Erro ao assinar próxima prestação")
+      toast({
+        title: "Erro",
+        description: "Erro ao assinar próxima prestação",
+        variant: "destructive",
+      })
     } finally {
       setLoading(false)
     }

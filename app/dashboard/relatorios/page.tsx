@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { useToast } from "@/hooks/use-toast"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -15,6 +16,7 @@ import { generatePDF } from "@/lib/pdf-generator"
 
 export default function RelatoriosFinanceirosPage() {
     const { user } = useAuth()
+    const { toast } = useToast()
     const router = useRouter()
 
     const [pagamentos, setPagamentos] = useState<Pagamento[]>([])
@@ -79,7 +81,11 @@ export default function RelatoriosFinanceirosPage() {
             }
         } catch (error) {
             console.error("Erro ao carregar dados financeiros:", error)
-            alert("Erro ao carregar dados financeiros!")
+            toast({
+              title: "Erro ao carregar",
+              description: "Erro ao carregar dados financeiros!",
+              variant: "destructive",
+            })
         } finally {
             setLoading(false)
         }
@@ -216,10 +222,18 @@ export default function RelatoriosFinanceirosPage() {
                 }
             )
 
-            alert("PDF exportado com sucesso!")
+            toast({
+              title: "Sucesso",
+              description: "PDF exportado com sucesso!",
+              variant: "default",
+            })
         } catch (error) {
             console.error("Erro ao exportar PDF:", error)
-            alert("Erro ao exportar PDF!")
+            toast({
+              title: "Erro",
+              description: "Erro ao exportar PDF!",
+              variant: "destructive",
+            })
         }
     }
 

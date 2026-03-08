@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/hooks/use-auth"
+import { useToast } from "@/hooks/use-toast"
 import { certificadoService, alunoService, formacaoService, turmaService } from "@/lib/supabase-services"
 import { CentroSidebar } from "@/components/centro-sidebar"
 import { Card, CardContent } from "@/components/ui/card"
@@ -27,6 +28,7 @@ import { Pagination } from "@/components/pagination"
 export default function CertificadosPage() {
   const router = useRouter()
   const { user, isLoading: authLoading } = useAuth()
+  const { toast } = useToast()
   const [certificados, setCertificados] = useState<Certificado[]>([])
   const [alunos, setAlunos] = useState<Aluno[]>([])
   const [formacoes, setFormacoes] = useState<Formacao[]>([])
@@ -70,7 +72,11 @@ export default function CertificadosPage() {
       const message = err instanceof Error ? err.message : "Erro ao carregar dados"
       setError(message)
       console.error("Erro ao carregar dados:", err)
-      alert(message)
+      toast({
+        title: "Erro ao carregar",
+        description: message,
+        variant: "destructive",
+      })
     } finally {
       setLoading(false)
     }
@@ -83,13 +89,25 @@ export default function CertificadosPage() {
       const success = await certificadoService.delete(id)
       if (success) {
         setCertificados(certificados.filter((c) => c.id !== id))
-        alert("Certificado deletado com sucesso")
+        toast({
+          title: "Sucesso",
+          description: "Certificado deletado com sucesso",
+          variant: "default",
+        })
       } else {
-        alert("Erro ao deletar certificado")
+        toast({
+          title: "Erro",
+          description: "Erro ao deletar certificado",
+          variant: "destructive",
+        })
       }
     } catch (err) {
       console.error("Erro ao deletar certificado:", err)
-      alert("Erro ao deletar certificado")
+      toast({
+        title: "Erro",
+        description: "Erro ao deletar certificado",
+        variant: "destructive",
+      })
     }
   }
 
@@ -109,11 +127,19 @@ export default function CertificadosPage() {
             c.id === certificadoId ? { ...c, estado: novoEstado } : c
           )
         )
-        alert("Estado do certificado atualizado com sucesso")
+        toast({
+          title: "Sucesso",
+          description: "Estado do certificado atualizado com sucesso",
+          variant: "default",
+        })
       }
     } catch (err) {
       console.error("Erro ao atualizar estado:", err)
-      alert("Erro ao atualizar estado do certificado")
+      toast({
+        title: "Erro",
+        description: "Erro ao atualizar estado do certificado",
+        variant: "destructive",
+      })
     }
   }
 
@@ -123,7 +149,11 @@ export default function CertificadosPage() {
 
     const aluno = alunos.find((a) => a.id === certificado.alunoId)
     if (!aluno || !aluno.phone) {
-      alert("Número de telefone do aluno não encontrado")
+      toast({
+        title: "Erro",
+        description: "Número de telefone do aluno não encontrado",
+        variant: "destructive",
+      })
       return
     }
 
@@ -155,7 +185,11 @@ export default function CertificadosPage() {
       window.URL.revokeObjectURL(url)
     } catch (error) {
       console.error("Erro ao fazer download:", error)
-      alert("Erro ao fazer download do PDF. Tente novamente.")
+      toast({
+        title: "Erro",
+        description: "Erro ao fazer download do PDF. Tente novamente.",
+        variant: "destructive",
+      })
     }
   }
 
@@ -451,7 +485,11 @@ export default function CertificadosPage() {
                             if (cert.pdfUrl) {
                               window.open(cert.pdfUrl, "_blank")
                             } else {
-                              alert("PDF não disponível")
+                              toast({
+                                title: "Aviso",
+                                description: "PDF não disponível",
+                                variant: "destructive",
+                              })
                             }
                           }}
                           className="flex-1 bg-purple-600 hover:bg-purple-700 text-white h-9 text-xs"
@@ -468,11 +506,19 @@ export default function CertificadosPage() {
                               if (cert.pdfUrl) {
                                 handleDownloadPDF(cert.pdfUrl, getNomeAluno(cert.alunoId))
                               } else {
-                                alert("PDF não disponível para download")
+                                toast({
+                                  title: "Aviso",
+                                  description: "PDF não disponível para download",
+                                  variant: "destructive",
+                                })
                               }
                             } catch (error) {
                               console.error("Erro ao fazer download:", error)
-                              alert("Erro ao fazer download do PDF")
+                              toast({
+                                title: "Erro",
+                                description: "Erro ao fazer download do PDF",
+                                variant: "destructive",
+                              })
                             }
                           }}
                           className="flex-1 bg-blue-600 hover:bg-blue-700 text-white h-9 text-xs"
