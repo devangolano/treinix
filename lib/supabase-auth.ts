@@ -192,7 +192,7 @@ export async function getUserProfile(userId: string): Promise<User | null> {
     let userName = data.user.user_metadata?.name || data.user.email || "Usuário"
 
     // VERIFICAÇÃO ESPECIAL: Se é super_admin, definir role diretamente
-    if (data.user.email === "admin@formacao-ao.com") {
+    if (data.user.email === "admin@treinix.com") {
       console.log("[getUserProfile] 🔐 Super Admin detectado!")
       userRole = "super_admin"
     }

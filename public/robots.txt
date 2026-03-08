@@ -10,7 +10,7 @@ Disallow: /api/admin
 Disallow: /_next
 
 # Sitemap location
-Sitemap: https://formacao-ao.com/sitemap.xml
+Sitemap: https://treinix.com/sitemap.xml
 
 # Crawl delay for polite crawling
 Crawl-delay: 1

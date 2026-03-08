@@ -19,6 +19,7 @@ import { Progress } from "@/components/ui/progress"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Pagination } from "@/components/pagination"
+import { InstallmentsModal } from "@/components/pagamentos/installments-modal"
 
 export default function PagamentosPage() {
   const router = useRouter()
@@ -495,118 +496,17 @@ export default function PagamentosPage() {
       </div>
 
       {/* Dialog de Prestações */}
-      <Dialog
+      <InstallmentsModal
         open={installmentsDialog.open}
         onOpenChange={(open) => setInstallmentsDialog({ ...installmentsDialog, open })}
-      >
-        <DialogContent className="max-w-4xl max-h-[90vh] bg-slate-900 border-blue-800 overflow-hidden flex flex-col p-0">
-          <DialogHeader className="border-b border-blue-800 px-6 py-4">
-            <DialogTitle className="text-2xl text-white">Prestações do Pagamento</DialogTitle>
-          </DialogHeader>
-          {installmentsDialog.pagamento && (
-            <div className="flex-1 overflow-y-auto flex flex-col">
-              {/* Header Info */}
-              <div className="bg-blue-800/50 px-6 py-4 border-b border-blue-700 space-y-2">
-                <p className="font-semibold text-white text-lg">{getAlunoName(installmentsDialog.pagamento.alunoId)}</p>
-                <p className="text-sm text-blue-300">{getTurmaName(installmentsDialog.pagamento.turmaId)}</p>
-                <p className="text-sm text-blue-200">
-                  Total:{" "}
-                  <span className="font-semibold text-white text-base">
-                    {installmentsDialog.pagamento.amount.toLocaleString("pt-AO")} Kz
-                  </span>
-                </p>
-              </div>
-
-              {/* Installments Grid */}
-              <div className="flex-1 px-6 py-4 space-y-3 overflow-y-auto">
-                {installmentsDialog.installments.map((installment) => (
-                  <div key={installment.id} className="bg-blue-900/40 border border-blue-700 rounded-lg p-4 hover:border-blue-600 transition-colors">
-                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
-                      {/* Número e Status */}
-                      <div className="md:col-span-2">
-                        <p className="text-xs text-blue-300 uppercase font-semibold mb-1">Prestação</p>
-                        <div className="flex items-center gap-2">
-                          <p className="font-bold text-white text-lg">{installment.installmentNumber}ª</p>
-                          <Badge 
-                            variant={installment.status === "paid" ? "default" : "outline"} 
-                            className={installment.status === "paid" ? "bg-green-500 text-white border-green-600 text-xs" : "border-orange-500 text-orange-400 text-xs"}
-                          >
-                            {installment.status === "paid" ? "✓ Pago" : "Pendente"}
-                          </Badge>
-                        </div>
-                      </div>
-
-                      {/* Valor */}
-                      <div className="md:col-span-2">
-                        <p className="text-xs text-blue-300 uppercase font-semibold mb-1">Valor</p>
-                        <p className="font-bold text-white text-lg">
-                          {installment.amount.toLocaleString("pt-AO")} Kz
-                        </p>
-                      </div>
-
-                      {/* Data de Vencimento */}
-                      <div className="md:col-span-2">
-                        <p className="text-xs text-blue-300 uppercase font-semibold mb-1">Vencimento</p>
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-blue-400 shrink-0" />
-                          <p className="text-sm text-white font-medium">
-                            {installment.dueDate.toLocaleDateString("pt-AO")}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Data de Pagamento */}
-                      <div className="md:col-span-2">
-                        <p className="text-xs text-blue-300 uppercase font-semibold mb-1">Pago em</p>
-                        {installment.paidAt ? (
-                          <p className="text-sm text-green-400 font-medium">
-                            {installment.paidAt.toLocaleDateString("pt-AO")}
-                          </p>
-                        ) : (
-                          <p className="text-sm text-blue-400">-</p>
-                        )}
-                      </div>
-
-                      {/* Ação */}
-                      <div className="md:col-span-4 flex gap-2 justify-start md:justify-end">
-                        {installment.status === "pending" && (
-                          <Button 
-                            size="sm" 
-                            onClick={() => handlePayInstallment(installment.id)} 
-                            disabled={loading} 
-                            className="bg-orange-500 hover:bg-orange-600 text-white text-sm"
-                          >
-                            {loading ? "Processando..." : "Marcar Pago"}
-                          </Button>
-                        )}
-                        {installment.status === "paid" && (
-                          <div className="text-green-400 font-medium text-sm flex items-center">
-                            ✓ Registrado
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Footer Actions */}
-              {installmentsDialog.pagamento.status === "partial" &&
-                installmentsDialog.installments.some((i) => i.status !== "paid") && (
-                  <div className="border-t border-blue-800 px-6 py-4 bg-blue-900/20">
-                    <Button
-                      onClick={handleSignNextInstallment}
-                      disabled={loading}
-                      className="w-full bg-green-600 hover:bg-green-700 text-white"
-                    >
-                      {loading ? "Processando..." : "✓ Assinar Próxima Prestação"}
-                    </Button>
-                  </div>
-                )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+        pagamento={installmentsDialog.pagamento}
+        installments={installmentsDialog.installments}
+        turmas={turmas}
+        alunos={alunos}
+        loading={loading}
+        onPayInstallment={handlePayInstallment}
+        onSignNextInstallment={handleSignNextInstallment}
+      />
     </div>
   )
 }

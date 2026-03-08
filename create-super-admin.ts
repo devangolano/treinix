@@ -24,7 +24,7 @@ async function createSuperAdmin() {
     // 1. Deletar usuário anterior se existir
     console.log("   → Limpando usuário anterior...")
     try {
-      await supabase.auth.admin.deleteUser("admin@formacao-ao.com")
+      await supabase.auth.admin.deleteUser("admin@treinix.com")
     } catch {
       // Ignorar erro se não existir
     }
@@ -32,7 +32,7 @@ async function createSuperAdmin() {
     // 2. Criar usuário no Supabase Auth
     console.log("   → Criando usuário em auth.users...")
     const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
-      email: "admin@formacao-ao.com",
+      email: "admin@treinix.com",
       password: "admin123",
       email_confirm: true, // Confirmar email automaticamente
     })
@@ -49,7 +49,7 @@ async function createSuperAdmin() {
     const { error: deleteError } = await supabase
       .from("users")
       .delete()
-      .eq("email", "admin@formacao-ao.com")
+      .eq("email", "admin@treinix.com")
 
     if (deleteError && !deleteError.message.includes("no rows")) {
       console.warn("   ⚠️  Aviso ao deletar:", deleteError.message)
@@ -62,7 +62,7 @@ async function createSuperAdmin() {
       .insert([
         {
           name: "Super Admin",
-          email: "admin@formacao-ao.com",
+          email: "admin@treinix.com",
           phone: "+244 923 456 789",
           role: "super_admin",
           password_hash: "", // Não usar, pois está no Supabase Auth
@@ -80,7 +80,7 @@ async function createSuperAdmin() {
 
     console.log("\n✅ Super Admin criado com sucesso!")
     console.log("\n📝 Credenciais para login:")
-    console.log("   Email: admin@formacao-ao.com")
+    console.log("   Email: admin@treinix.com")
     console.log("   Senha: admin123")
     console.log("\n⚠️  IMPORTANTE: Mude essa senha após o primeiro login!")
   } catch (error) {

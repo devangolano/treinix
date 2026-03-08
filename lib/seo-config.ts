@@ -1,7 +1,7 @@
 // SEO Configuration for Formação-Ao
 export const SEOConfig = {
   siteName: "Formação-Ao",
-  siteUrl: "https://formacao-ao.com",
+  siteUrl: "https://treinix.com",
   locale: "pt_AO",
   titleTemplate: "%s | Formação-Ao",
   defaultTitle: "Formação-Ao | Sistema de Gestão para Centros de Formação",
@@ -10,11 +10,11 @@ export const SEOConfig = {
   openGraph: {
     type: "website",
     locale: "pt_AO",
-    url: "https://formacao-ao.com",
+    url: "https://treinix.com",
     siteName: "Formação-Ao",
     images: [
       {
-        url: "https://formacao-ao.com/link.png",
+        url: "https://treinix.com/link.png",
         width: 1200,
         height: 630,
         alt: "Formação-Ao",
@@ -45,19 +45,19 @@ export const structuredData = {
     "@context": "https://schema.org",
     "@type": "Organization",
     name: "Formação-Ao",
-    url: "https://formacao-ao.com",
-    logo: "https://formacao-ao.com/icon.png",
+    url: "https://treinix.com",
+    logo: "https://treinix.com/icon.png",
     description:
       "Plataforma de gestão para centros de formação em Angola",
     sameAs: [
-      "https://www.facebook.com/formacao-ao",
-      "https://www.instagram.com/formacao-ao",
+      "https://www.facebook.com/treinix",
+      "https://www.instagram.com/treinix",
       "https://twitter.com/FormacaoAO",
     ],
     contactPoint: {
       "@type": "ContactPoint",
       contactType: "Customer Support",
-      email: "suporte@formacao-ao.com",
+      email: "suporte@treinix.com",
     },
   },
   software: {
@@ -66,8 +66,8 @@ export const structuredData = {
     name: "Formação-Ao",
     description:
       "Sistema de gestão para centros de formação profissional",
-    url: "https://formacao-ao.com",
-    image: "https://formacao-ao.com/link.png",
+    url: "https://treinix.com",
+    image: "https://treinix.com/link.png",
     applicationCategory: "BusinessApplication",
     operatingSystem: "Web",
     offers: {

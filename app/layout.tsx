@@ -15,7 +15,7 @@ const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Treinix | Sistema de Gestão para Centros de Formação",
+  title: "Treinix | Sistema de Gestão para Centros de Formação em Angola",
   description:
     "Plataforma completa para gestão de centros de formação em Angola. Gerencie alunos, turmas, pagamentos e formações em um único lugar. 3 dias grátis!",
   keywords: [
