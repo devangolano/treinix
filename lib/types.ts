@@ -19,6 +19,7 @@ export interface Centro {
   phone: string
   address: string
   nif?: string
+  logoUrl?: string
   createdAt: Date
   subscriptionStatus: SubscriptionStatus
   trialEndsAt?: Date

@@ -214,6 +214,9 @@ export default function DetalhesAlunoPage() {
         centroEmail: centro.email,
         centroPhone: centro.phone,
         centroAddress: centro.address,
+        centroLogoUrl: centro.logoUrl,
+        formacao: formacao.name,
+        turma: turma.name,
         paymentMethod: pagamento ? paymentMethodMap[pagamento.paymentMethod] || pagamento.paymentMethod : undefined,
         paymentStatus: pagamento ? paymentStatus : "pending",
         installmentsPaid: pagamento?.installmentsPaid,
@@ -322,13 +325,6 @@ export default function DetalhesAlunoPage() {
                     Matrículas ({matriculas.length})
                   </h2>
                 </div>
-
-                {/* Debug Info */}
-                {matriculas.length > 0 && (
-                  <div className="mb-4 p-3 bg-blue-800/50 rounded border border-blue-600 text-xs text-blue-300">
-                    <p>Debug: {Object.keys(pagamentosMap).length} matrículas com dados de pagamento</p>
-                  </div>
-                )}
 
                 {matriculas.length === 0 ? (
                   <div className="bg-blue-900/10 border border-blue-700/50 rounded-lg p-6 text-center">

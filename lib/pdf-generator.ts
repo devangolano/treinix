@@ -13,6 +13,9 @@ interface AlunoFichaData {
   centroEmail?: string
   centroPhone?: string
   centroAddress?: string
+  centroLogoUrl?: string
+  formacao?: string
+  turma?: string
   paymentMethod?: string
   paymentStatus?: "paid" | "half-paid" | "pending"
   installmentsPaid?: number
@@ -41,48 +44,99 @@ export async function generateAlunoPDF(alunoData: AlunoFichaData) {
 
     let yPosition = 50
 
-    // Dados do Centro destacados (apenas negrito)
+    // ===== CABEÇALHO COM LOGO E DADOS DO CENTRO =====
+    let logoWidth = 0
+    
+    // Renderizar logo se disponível
+    if (alunoData.centroLogoUrl) {
+      try {
+        const logoResponse = await fetch(alunoData.centroLogoUrl)
+        if (logoResponse.ok) {
+          const logoBuffer = await logoResponse.arrayBuffer()
+          
+          // Tentar detectar formato (jpg/png)
+          const logoImage = alunoData.centroLogoUrl.toLowerCase().includes('jpg') || alunoData.centroLogoUrl.toLowerCase().includes('jpeg')
+            ? await pdfDoc.embedJpg(logoBuffer)
+            : await pdfDoc.embedPng(logoBuffer)
+          
+          // Renderizar logo (altura máxima 35 points, largura proporcional)
+          const logoMaxHeight = 35
+          const scaleFactor = logoMaxHeight / logoImage.height
+          logoWidth = logoImage.width * scaleFactor
+          
+          // Limitar largura máxima a 80 points
+          if (logoWidth > 80) {
+            logoWidth = 80
+            const newHeight = (logoImage.height * logoWidth) / logoImage.width
+            page.drawImage(logoImage, {
+              x: 50,
+              y: height - yPosition - newHeight,
+              width: logoWidth,
+              height: newHeight,
+            })
+          } else {
+            page.drawImage(logoImage, {
+              x: 50,
+              y: height - yPosition - logoMaxHeight,
+              width: logoWidth,
+              height: logoMaxHeight,
+            })
+          }
+        }
+      } catch (error) {
+        console.error("Erro ao carregar logo:", error)
+        // Continuar sem logo se houver erro
+      }
+    }
+
+    // Dados do Centro (com margem em relação à logo)
+    const dataStartX = logoWidth > 0 ? 50 + logoWidth + 15 : 50
+    const dataStartY = yPosition
+
     if (alunoData.centroName) {
       page.drawText(alunoData.centroName, {
-        x: 50,
-        y: height - yPosition,
-        size: 16,
+        x: dataStartX,
+        y: height - dataStartY,
+        size: 14,
         color: darkBlue,
       })
-      yPosition += 18
     }
+
+    let currentDataY = dataStartY + 14
 
     if (alunoData.centroEmail) {
       page.drawText(`Email: ${alunoData.centroEmail}`, {
-        x: 50,
-        y: height - yPosition,
-        size: 10,
+        x: dataStartX,
+        y: height - currentDataY,
+        size: 9,
         color: black,
       })
-      yPosition += 14
+      currentDataY += 11
     }
 
     if (alunoData.centroPhone) {
       page.drawText(`Telefone: ${alunoData.centroPhone}`, {
-        x: 50,
-        y: height - yPosition,
-        size: 10,
+        x: dataStartX,
+        y: height - currentDataY,
+        size: 9,
         color: black,
       })
-      yPosition += 14
+      currentDataY += 11
     }
 
     if (alunoData.centroAddress) {
       page.drawText(`Localização: ${alunoData.centroAddress}`, {
-        x: 50,
-        y: height - yPosition,
-        size: 10,
+        x: dataStartX,
+        y: height - currentDataY,
+        size: 9,
         color: black,
       })
-      yPosition += 14
+      currentDataY += 11
     }
 
-    yPosition += 12
+    // Atualizar yPosition para abaixo do maior elemento (logo ou dados)
+    yPosition = Math.max(yPosition + (logoWidth > 0 ? 40 : 0), currentDataY) + 12
+
     // Linha separadora
     page.drawLine({
       start: { x: 50, y: height - yPosition },
@@ -222,6 +276,20 @@ export async function generateAlunoPDF(alunoData: AlunoFichaData) {
       y: height - yPosition,
       size: 9,
       color: darkGray,
+    })
+
+    yPosition += 12
+    page.drawText(alunoData.formacao || "Não informado", {
+      x: 50,
+      y: height - yPosition,
+      size: 10,
+      color: black,
+    })
+    page.drawText(alunoData.turma || "Não informado", {
+      x: 320,
+      y: height - yPosition,
+      size: 10,
+      color: black,
     })
 
     // Data de Inscrição

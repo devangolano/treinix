@@ -15,6 +15,7 @@ import {
   LogOut,
   Menu,
   Award,
+  Building2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { signOut } from "@/lib/supabase-auth"
@@ -101,7 +102,23 @@ function SidebarContent() {
         <Image src="/logo.png" alt="Treinix Logo" width={120} height={30} className="h-6 w-auto" />
       </div>
 
-      <nav className="flex-1 space-y-1 p-4">
+      {/* Perfil do Centro */}
+      <Link
+        href="/dashboard/centro"
+        className={cn(
+          "mx-4 mt-2 flex items-center gap-3 rounded-lg px-3 py-1 text-sm font-medium transition-colors",
+          pathname === "/dashboard/centro"
+            ? " bg-orange-500/10 text-orange-400"
+            : " bg-blue-900/20 text-blue-300 hover:border-orange-400/50 hover:bg-blue-900/40",
+        )}
+      >
+        <Building2 className="h-4 w-4 shrink-0" />
+        <div className="flex-1 text-left min-w-0">
+          <div className="font-semibold truncate">Perfil</div>
+        </div>
+      </Link>
+
+      <nav className="flex-1 space-y-1 p-4 mt-2 border-t border-blue-800">
         {visibleMenuItems.map((item) => {
           const Icon = item.icon
           const isActive = pathname === item.href

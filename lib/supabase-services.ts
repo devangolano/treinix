@@ -25,6 +25,7 @@ export const centroService = {
         phone: centro.phone,
         address: centro.address,
         nif: centro.nif,
+        logoUrl: centro.logo_url,
         createdAt: new Date(centro.created_at),
         subscriptionStatus: centro.subscription_status,
         trialEndsAt: centro.trial_ends_at ? new Date(centro.trial_ends_at) : undefined,
@@ -48,6 +49,7 @@ export const centroService = {
 
       return {
         ...data,
+        logoUrl: data.logo_url,
         createdAt: new Date(data.created_at),
         subscriptionStatus: data.subscription_status,
         trialEndsAt: data.trial_ends_at ? new Date(data.trial_ends_at) : undefined,
@@ -102,6 +104,7 @@ export const centroService = {
       if (data.phone) updateData.phone = data.phone
       if (data.address) updateData.address = data.address
       if (data.nif) updateData.nif = data.nif
+      if (data.logoUrl) updateData.logo_url = data.logoUrl
       if (data.subscriptionStatus) updateData.subscription_status = data.subscriptionStatus
 
       const { data: updatedCentro, error } = await supabase
@@ -115,6 +118,7 @@ export const centroService = {
 
       return {
         ...updatedCentro,
+        logoUrl: updatedCentro.logo_url,
         createdAt: new Date(updatedCentro.created_at),
         subscriptionStatus: updatedCentro.subscription_status,
         trialEndsAt: updatedCentro.trial_ends_at ? new Date(updatedCentro.trial_ends_at) : undefined,
