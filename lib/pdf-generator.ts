@@ -378,3 +378,441 @@ export async function generateAlunoPDF(alunoData: AlunoFichaData) {
   URL.revokeObjectURL(url)
 
 }
+
+export async function generatePDF(
+  titulo: string,
+  dados: Array<{ [key: string]: string }>,
+  totais?: { 
+    totalCobrado?: number
+    totalRecebido?: number
+    totalParcial?: number
+    totalPendente?: number
+    formatCurrency?: (value: number) => string
+    centroData?: { nome: string; email: string; telefone: string; endereco: string; nif?: string; logoUrl?: string }
+  }
+) {
+  try {
+    const pdfDoc = await PDFDocument.create()
+    let page = pdfDoc.addPage([595, 842])
+    const { width, height } = page.getSize()
+
+    const helveticaBold = await pdfDoc.embedFont("Helvetica-Bold")
+    const helvetica = await pdfDoc.embedFont("Helvetica")
+
+    const darkBlue = rgb(30 / 255, 58 / 255, 138 / 255)
+    const mediumGray = rgb(107 / 255, 114 / 255, 128 / 255)
+    const darkText = rgb(30 / 255, 30 / 255, 30 / 255)
+    const borderColor = rgb(220 / 255, 220 / 255, 220 / 255)
+    const darkGray = rgb(50 / 255, 50 / 255, 50 / 255)
+    const lightGray = rgb(240 / 255, 240 / 255, 240 / 255)
+    const white = rgb(1, 1, 1)
+    const black = rgb(0, 0, 0)
+
+    let yPosition = 60
+
+    // ===== CABEÇALHO =====
+    let logoWidth = 0
+
+    if (totais?.centroData?.logoUrl) {
+      try {
+        const logoResponse = await fetch(totais.centroData.logoUrl)
+        if (logoResponse.ok) {
+          const logoBuffer = await logoResponse.arrayBuffer()
+
+          const logoImage = totais.centroData.logoUrl.toLowerCase().includes('jpg') || totais.centroData.logoUrl.toLowerCase().includes('jpeg')
+            ? await pdfDoc.embedJpg(logoBuffer)
+            : await pdfDoc.embedPng(logoBuffer)
+
+          const logoMaxHeight = 40
+          const scaleFactor = logoMaxHeight / logoImage.height
+          logoWidth = logoImage.width * scaleFactor
+
+          if (logoWidth > 60) {
+            logoWidth = 60
+            const newHeight = (logoImage.height * logoWidth) / logoImage.width
+            page.drawImage(logoImage, {
+              x: 50,
+              y: height - yPosition - newHeight,
+              width: logoWidth,
+              height: newHeight,
+            })
+          } else {
+            page.drawImage(logoImage, {
+              x: 50,
+              y: height - yPosition - logoMaxHeight,
+              width: logoWidth,
+              height: logoMaxHeight,
+            })
+          }
+        }
+      } catch (error) {
+        console.error("Erro ao carregar logo:", error)
+      }
+    }
+
+    const headerStartX = 50 + logoWidth + (logoWidth > 0 ? 15 : 0)
+
+    if (totais?.centroData) {
+      const centro = totais.centroData
+
+      page.drawText((centro.nome || "Centro de Formação").toUpperCase(), {
+        x: headerStartX,
+        y: height - yPosition,
+        size: 16,
+        color: darkBlue,
+        font: helveticaBold,
+      })
+      yPosition += 18
+
+      if (centro.email) {
+        page.drawText(`Email: ${centro.email}`, {
+          x: headerStartX,
+          y: height - yPosition,
+          size: 10,
+          color: darkText,
+          font: helvetica,
+        })
+        yPosition += 12
+      }
+
+      if (centro.telefone) {
+        page.drawText(`Telefone: ${centro.telefone}`, {
+          x: headerStartX,
+          y: height - yPosition,
+          size: 10,
+          color: darkText,
+          font: helvetica,
+        })
+        yPosition += 12
+      }
+
+      if (centro.endereco) {
+        page.drawText(`Localização: ${centro.endereco}`, {
+          x: headerStartX,
+          y: height - yPosition,
+          size: 10,
+          color: darkText,
+          font: helvetica,
+        })
+        yPosition += 12
+      }
+
+      if (centro.nif) {
+        page.drawText(`NIF: ${centro.nif}`, {
+          x: headerStartX,
+          y: height - yPosition,
+          size: 10,
+          color: darkText,
+          font: helvetica,
+        })
+        yPosition += 12
+      }
+    }
+
+    yPosition += 15
+
+    // Linha separadora
+    page.drawLine({
+      start: { x: 50, y: height - yPosition },
+      end: { x: width - 50, y: height - yPosition },
+      thickness: 2,
+      color: darkBlue,
+    })
+
+    yPosition += 20
+
+    // Título do relatório
+    page.drawText(titulo.toUpperCase(), {
+      x: 50,
+      y: height - yPosition,
+      size: 14,
+      color: darkBlue,
+      font: helveticaBold,
+    })
+
+    const today = new Date().toLocaleDateString("pt-AO")
+    page.drawText(`Data: ${today}`, {
+      x: width - 120,
+      y: height - yPosition,
+      size: 11,
+      color: darkBlue,
+    })
+
+    yPosition += 25
+
+    // ===== RESUMO FINANCEIRO =====
+    if (totais && totais.formatCurrency) {
+      const formatCurrency = totais.formatCurrency
+
+      page.drawText("RESUMO FINANCEIRO", {
+        x: 50,
+        y: height - yPosition,
+        size: 12,
+        color: darkBlue,
+        font: helveticaBold,
+      })
+
+      yPosition += 18
+
+      const col1X = 55
+      const col2X = 300
+
+      // Linha 1: Total Cobrado e Já Recebido
+      page.drawText("Total Cobrado", {
+        x: col1X,
+        y: height - yPosition,
+        size: 8,
+        color: mediumGray,
+      })
+      page.drawText("Ja Recebido", {
+        x: col2X,
+        y: height - yPosition,
+        size: 8,
+        color: mediumGray,
+      })
+
+      page.drawText(formatCurrency(totais.totalCobrado || 0), {
+        x: col1X,
+        y: height - yPosition - 10,
+        size: 11,
+        color: darkText,
+        font: helveticaBold,
+      })
+      page.drawText(formatCurrency(totais.totalRecebido || 0), {
+        x: col2X,
+        y: height - yPosition - 10,
+        size: 11,
+        color: darkText,
+        font: helveticaBold,
+      })
+
+      yPosition += 22
+
+      // Linha 2: Parcial e Pendente
+      page.drawText("Parcial", {
+        x: col1X,
+        y: height - yPosition,
+        size: 8,
+        color: mediumGray,
+      })
+      page.drawText("A Receber", {
+        x: col2X,
+        y: height - yPosition,
+        size: 8,
+        color: mediumGray,
+      })
+
+      page.drawText(formatCurrency(totais.totalParcial || 0), {
+        x: col1X,
+        y: height - yPosition - 10,
+        size: 11,
+        color: darkText,
+        font: helveticaBold,
+      })
+      page.drawText(formatCurrency(totais.totalPendente || 0), {
+        x: col2X,
+        y: height - yPosition - 10,
+        size: 11,
+        color: darkText,
+        font: helveticaBold,
+      })
+
+      yPosition += 25
+    }
+
+    // ===== TABELA DE DETALHAMENTO =====
+
+    page.drawLine({
+      start: { x: 50, y: height - yPosition },
+      end: { x: width - 50, y: height - yPosition },
+      thickness: 1,
+      color: borderColor,
+    })
+
+    yPosition += 15
+
+    page.drawText("DETALHAMENTO DE PAGAMENTOS", {
+      x: 50,
+      y: height - yPosition,
+      size: 12,
+      color: darkBlue,
+      font: helveticaBold,
+    })
+
+    yPosition += 18
+
+    page.drawLine({
+      start: { x: 50, y: height - yPosition },
+      end: { x: width - 50, y: height - yPosition },
+      thickness: 1,
+      color: borderColor,
+    })
+
+    yPosition += 10
+
+    // Cabeçalhos da tabela
+    const colunas = Object.keys(dados[0] || {})
+    const colunasAbreviadas: { [key: string]: string } = {
+      aluno: "Aluno",
+      formacao: "Formação",
+      turma: "Turma",
+      valor: "Valor",
+      parcelas: "Parc.",
+      metodo: "Método",
+      data: "Data",
+      status: "Status",
+    }
+
+    const larguraColuna = (width - 100) / colunas.length
+
+    let xCol = 55
+    colunas.forEach((col) => {
+      const colLabel = colunasAbreviadas[col] || col
+      page.drawText(colLabel, {
+        x: xCol,
+        y: height - yPosition,
+        size: 9,
+        color: darkBlue,
+        font: helveticaBold,
+      })
+      xCol += larguraColuna
+    })
+
+    yPosition += 12
+
+    page.drawLine({
+      start: { x: 50, y: height - yPosition },
+      end: { x: width - 50, y: height - yPosition },
+      thickness: 0.5,
+      color: borderColor,
+    })
+
+    yPosition += 8
+
+    // Linhas de dados
+    let linhasNaPagina = 0
+    const linhasMaximasPorPagina = 30
+
+    dados.forEach((row, indexRow) => {
+      // Nova página se necessário
+      if (linhasNaPagina >= linhasMaximasPorPagina) {
+        page = pdfDoc.addPage([595, 842])
+        yPosition = 40
+        linhasNaPagina = 0
+
+        // Repetir cabeçalho em nova página
+        page.drawText(titulo.toUpperCase(), {
+          x: 50,
+          y: height - yPosition,
+          size: 12,
+          color: darkBlue,
+          font: helveticaBold,
+        })
+
+        yPosition += 20
+
+        page.drawLine({
+          start: { x: 50, y: height - yPosition },
+          end: { x: width - 50, y: height - yPosition },
+          thickness: 1,
+          color: borderColor,
+        })
+
+        yPosition += 10
+
+        xCol = 55
+        colunas.forEach((col) => {
+          const colLabel = colunasAbreviadas[col] || col
+          page.drawText(colLabel, {
+            x: xCol,
+            y: height - yPosition,
+            size: 9,
+            color: darkBlue,
+            font: helveticaBold,
+          })
+          xCol += larguraColuna
+        })
+
+        yPosition += 12
+
+        page.drawLine({
+          start: { x: 50, y: height - yPosition },
+          end: { x: width - 50, y: height - yPosition },
+          thickness: 0.5,
+          color: borderColor,
+        })
+
+        yPosition += 8
+      }
+
+      // Cores alternadas
+      if (linhasNaPagina % 2 === 0) {
+        page.drawRectangle({
+          x: 50,
+          y: height - yPosition - 10,
+          width: width - 100,
+          height: 12,
+          color: lightGray,
+        })
+      }
+
+      xCol = 55
+      colunas.forEach((col) => {
+        const texto = String(row[col] || "")
+        const textoTruncado = texto.length > 15 ? texto.substring(0, 13) + ".." : texto
+
+        page.drawText(textoTruncado, {
+          x: xCol,
+          y: height - yPosition - 8,
+          size: 8,
+          color: black,
+        })
+        xCol += larguraColuna
+      })
+
+      yPosition += 12
+      linhasNaPagina += 1
+    })
+
+    // ===== RODAPÉ =====
+    const footerY = 30
+
+    page.drawLine({
+      start: { x: 50, y: footerY + 15 },
+      end: { x: width - 50, y: footerY + 15 },
+      thickness: 1,
+      color: borderColor,
+    })
+
+    page.drawText("Documento gerado automaticamente pelo sistema Treinix", {
+      x: 50,
+      y: footerY + 5,
+      size: 7,
+      color: mediumGray,
+    })
+
+    page.drawText(`Data: ${today}`, {
+      x: width - 120,
+      y: footerY + 5,
+      size: 7,
+      color: mediumGray,
+    })
+
+    // Salvar PDF
+    const pdfBytes = await pdfDoc.save()
+    const blob = new Blob([pdfBytes as BufferSource], { type: "application/pdf" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.download = `${titulo.replace(/\s+/g, "_")}_${today.replace(/\//g, "-")}.pdf`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+
+    return true
+  } catch (error) {
+    console.error("Erro ao gerar PDF de relatório:", error)
+    throw error
+  }
+}

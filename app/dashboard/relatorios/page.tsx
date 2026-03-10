@@ -33,12 +33,13 @@ export default function RelatoriosFinanceirosPage() {
     const [installmentStats, setInstallmentStats] = useState<Record<string, { paidCount: number; totalCount: number }>>({})
     const ITENS_POR_PAGINA = 15
 
-    // Filtros - com datas padrão (hoje até fim do mês)
+    // Filtros - com datas padrão (primeiro dia do mês até fim do mês)
     const hoje = new Date()
+    const primeiroDiaDoMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1)
     const ultimoDiaDoMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0)
 
     const [filtros, setFiltros] = useState({
-        dataInicio: hoje.toISOString().split("T")[0],
+        dataInicio: primeiroDiaDoMes.toISOString().split("T")[0],
         dataFim: ultimoDiaDoMes.toISOString().split("T")[0],
         formacao: "",
         turma: "",
