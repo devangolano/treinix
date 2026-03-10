@@ -108,8 +108,8 @@ function SidebarContent() {
         className={cn(
           "mx-4 mt-2 flex items-center gap-3 rounded-lg px-3 py-1 text-sm font-medium transition-colors",
           pathname === "/dashboard/centro"
-            ? " bg-orange-500/10 text-orange-400"
-            : " bg-blue-900/20 text-blue-300 hover:border-orange-400/50 hover:bg-blue-900/40",
+            ? "  text-orange-400"
+            : "  text-blue-300 hover:border-orange-400/50 hover:bg-blue-900/40",
         )}
       >
         <Building2 className="h-4 w-4 shrink-0" />
