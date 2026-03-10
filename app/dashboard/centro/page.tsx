@@ -236,7 +236,7 @@ export default function CentroPerfilPage() {
                 <Label className="text-white">Logo do Centro</Label>
                 <div className="flex flex-col md:flex-row gap-6">
                   {/* Preview */}
-                  <div className="shrink-0">
+                  <div className="shrink-0 flex items-center justify-center">
                     <div className="w-32 h-32 bg-blue-900/40 border-2 border-dashed border-blue-700 rounded-lg flex items-center justify-center overflow-hidden">
                       {logoPreview ? (
                         <Image
@@ -247,7 +247,7 @@ export default function CentroPerfilPage() {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <div className="flex flex-col items-center text-blue-400">
+                        <div className="flex justify-center flex-col items-center text-blue-400">
                           <ImageIcon className="h-8 w-8 mb-2" />
                           <span className="text-xs text-center">Sem logo</span>
                         </div>
