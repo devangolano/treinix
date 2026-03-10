@@ -1,4 +1,4 @@
-import { PDFDocument, rgb, PDFPage } from "pdf-lib"
+import { PDFDocument, rgb } from "pdf-lib"
 
 interface AlunoFichaData {
   name: string
@@ -24,759 +24,357 @@ interface AlunoFichaData {
 }
 
 export async function generateAlunoPDF(alunoData: AlunoFichaData) {
-  try {
-    // Criar novo documento PDF
-    const pdfDoc = await PDFDocument.create()
-    
-    // Adicionar uma página A4
-    const page = pdfDoc.addPage([595, 842]) // A4 em points
-    const { width, height } = page.getSize()
 
-    // Cores
-    const darkBlue = rgb(30 / 255, 58 / 255, 138 / 255) // #1e3a8a
-    const darkGray = rgb(102 / 255, 102 / 255, 102 / 255) // #666666
-    const mediumGray = rgb(80 / 255, 80 / 255, 80 / 255) // #505050 (mais legível)
-    const black = rgb(0, 0, 0)
-    const lightGreen = rgb(220 / 255, 252 / 255, 231 / 255) // #dcfce7
-    const darkGreen = rgb(22 / 255, 101 / 255, 52 / 255) // #166534
-    const lightRed = rgb(254 / 255, 226 / 255, 226 / 255) // #fee2e2
-    const darkRed = rgb(153 / 255, 27 / 255, 27 / 255) // #991b1b
+  const pdfDoc = await PDFDocument.create()
+  const page = pdfDoc.addPage([595, 842])
 
-    let yPosition = 50
+  const { width, height } = page.getSize()
 
-    // ===== CABEÇALHO COM LOGO E DADOS DO CENTRO =====
-    let logoWidth = 0
-    
-    // Renderizar logo se disponível
-    if (alunoData.centroLogoUrl) {
-      try {
-        const logoResponse = await fetch(alunoData.centroLogoUrl)
-        if (logoResponse.ok) {
-          const logoBuffer = await logoResponse.arrayBuffer()
-          
-          // Tentar detectar formato (jpg/png)
-          const logoImage = alunoData.centroLogoUrl.toLowerCase().includes('jpg') || alunoData.centroLogoUrl.toLowerCase().includes('jpeg')
-            ? await pdfDoc.embedJpg(logoBuffer)
-            : await pdfDoc.embedPng(logoBuffer)
-          
-          // Renderizar logo (altura máxima 35 points, largura proporcional)
-          const logoMaxHeight = 35
-          const scaleFactor = logoMaxHeight / logoImage.height
-          logoWidth = logoImage.width * scaleFactor
-          
-          // Limitar largura máxima a 80 points
-          if (logoWidth > 80) {
-            logoWidth = 80
-            const newHeight = (logoImage.height * logoWidth) / logoImage.width
-            page.drawImage(logoImage, {
-              x: 50,
-              y: height - yPosition - newHeight,
-              width: logoWidth,
-              height: newHeight,
-            })
-          } else {
-            page.drawImage(logoImage, {
-              x: 50,
-              y: height - yPosition - logoMaxHeight,
-              width: logoWidth,
-              height: logoMaxHeight,
-            })
-          }
-        }
-      } catch (error) {
-        console.error("Erro ao carregar logo:", error)
-        // Continuar sem logo se houver erro
+  const helvetica = await pdfDoc.embedFont("Helvetica")
+  const helveticaBold = await pdfDoc.embedFont("Helvetica-Bold")
+
+  const darkBlue = rgb(30/255,58/255,138/255)
+  const mediumGray = rgb(107/255,114/255,128/255)
+  const darkText = rgb(30/255,30/255,30/255)
+  const borderColor = rgb(220/255,220/255,220/255)
+  const green = rgb(22/255,101/255,52/255)
+  const red = rgb(153/255,27/255,27/255)
+
+  let yPos = 60
+  let logoWidth = 0
+
+  /* ===============================
+     LOGO DO CENTRO
+  =============================== */
+
+  if (alunoData.centroLogoUrl) {
+
+    try {
+
+      const res = await fetch(alunoData.centroLogoUrl)
+      const imageBytes = await res.arrayBuffer()
+
+      let logoImage
+
+      if (alunoData.centroLogoUrl.endsWith(".png")) {
+        logoImage = await pdfDoc.embedPng(imageBytes)
+      } else {
+        logoImage = await pdfDoc.embedJpg(imageBytes)
       }
-    }
 
-    // Dados do Centro (com margem em relação à logo)
-    const dataStartX = logoWidth > 0 ? 50 + logoWidth + 15 : 50
-    const dataStartY = yPosition
+      const maxWidth = 70
+      const maxHeight = 50
 
-    if (alunoData.centroName) {
-      page.drawText(alunoData.centroName, {
-        x: dataStartX,
-        y: height - dataStartY,
-        size: 14,
-        color: darkBlue,
+      const imgWidth = logoImage.width
+      const imgHeight = logoImage.height
+
+      let finalWidth = maxWidth
+      let finalHeight = (imgHeight / imgWidth) * finalWidth
+
+      if (finalHeight > maxHeight) {
+        finalHeight = maxHeight
+        finalWidth = (imgWidth / imgHeight) * finalHeight
+      }
+
+      logoWidth = finalWidth
+
+      page.drawImage(logoImage,{
+        x:50,
+        y:height-90,
+        width:finalWidth,
+        height:finalHeight
       })
+
+    } catch (err) {
+
+      console.log("Erro ao carregar logo:", err)
+
     }
 
-    let currentDataY = dataStartY + 14
+  }
 
-    if (alunoData.centroEmail) {
-      page.drawText(`Email: ${alunoData.centroEmail}`, {
-        x: dataStartX,
-        y: height - currentDataY,
-        size: 9,
-        color: black,
-      })
-      currentDataY += 11
-    }
+  /* ===============================
+     CABEÇALHO
+  =============================== */
 
-    if (alunoData.centroPhone) {
-      page.drawText(`Telefone: ${alunoData.centroPhone}`, {
-        x: dataStartX,
-        y: height - currentDataY,
-        size: 9,
-        color: black,
-      })
-      currentDataY += 11
-    }
+  const headerStartX = 60 + logoWidth
 
-    if (alunoData.centroAddress) {
-      page.drawText(`Localização: ${alunoData.centroAddress}`, {
-        x: dataStartX,
-        y: height - currentDataY,
-        size: 9,
-        color: black,
-      })
-      currentDataY += 11
-    }
+  page.drawText(alunoData.centroName || "Centro de Formação", {
+    x: headerStartX,
+    y: height - 55,
+    size: 16,
+    color: darkBlue,
+    font: helveticaBold
+  })
 
-    // Atualizar yPosition para abaixo do maior elemento (logo ou dados)
-    yPosition = Math.max(yPosition + (logoWidth > 0 ? 40 : 0), currentDataY) + 12
+  let infoY = 70
 
-    // Linha separadora
+  if (alunoData.centroEmail) {
+
+    page.drawText(`Email: ${alunoData.centroEmail}`, {
+      x: headerStartX,
+      y: height - infoY,
+      size: 10,
+      color: darkText,
+      font: helvetica
+    })
+
+    infoY += 12
+  }
+
+  if (alunoData.centroPhone) {
+
+    page.drawText(`Telefone: ${alunoData.centroPhone}`, {
+      x: headerStartX,
+      y: height - infoY,
+      size: 10,
+      color: darkText,
+      font: helvetica
+    })
+
+    infoY += 12
+  }
+
+  if (alunoData.centroAddress) {
+
+    page.drawText(`Localização: ${alunoData.centroAddress}`, {
+      x: headerStartX,
+      y: height - infoY,
+      size: 10,
+      color: darkText,
+      font: helvetica
+    })
+
+  }
+
+  yPos = infoY + 20
+
+  page.drawLine({
+    start:{x:50,y:height-yPos},
+    end:{x:width-50,y:height-yPos},
+    thickness:2,
+    color:darkBlue
+  })
+
+  yPos += 30
+
+  /* ===============================
+     TITULO
+  =============================== */
+
+  page.drawText("FICHA DO ALUNO",{
+    x: width/2 - 80,
+    y: height - yPos,
+    size:18,
+    font: helveticaBold,
+    color:darkBlue
+  })
+
+  yPos += 35
+
+  /* ===============================
+     FUNÇÕES DE LAYOUT
+  =============================== */
+
+  function sectionTitle(title:string){
+
+    page.drawRectangle({
+      x:50,
+      y:height-yPos+2,
+      width:4,
+      height:14,
+      color:darkBlue
+    })
+
+    page.drawText(title,{
+      x:60,
+      y:height-yPos,
+      size:12,
+      font:helveticaBold,
+      color:darkBlue
+    })
+
+    yPos+=20
+  }
+
+  function row(label:string,value:string){
+
+    page.drawText(label,{
+      x:60,
+      y:height-yPos,
+      size:9,
+      color:mediumGray,
+      font:helveticaBold
+    })
+
+    page.drawText(value || "—",{
+      x:220,
+      y:height-yPos,
+      size:10,
+      color:darkText,
+      font:helvetica
+    })
+
     page.drawLine({
-      start: { x: 50, y: height - yPosition },
-      end: { x: width - 50, y: height - yPosition },
-      thickness: 2,
-      color: darkBlue,
+      start:{x:50,y:height-yPos-6},
+      end:{x:width-50,y:height-yPos-6},
+      thickness:0.5,
+      color:borderColor
     })
 
-    // INFORMAÇÕES PESSOAIS
-    yPosition += 25
-    page.drawText("INFORMAÇÕES PESSOAIS", {
-      x: 50,
-      y: height - yPosition,
-      size: 14,
-      color: darkBlue,
-    })
+    yPos+=18
+  }
 
-    yPosition += 20
-    page.drawText("Nome Completo", {
-      x: 50,
-      y: height - yPosition,
-      size: 9,
-      color: darkGray,
-    })
+  /* ===============================
+     INFORMAÇÕES PESSOAIS
+  =============================== */
 
-    yPosition += 12
-    page.drawText(alunoData.name, {
-      x: 50,
-      y: height - yPosition,
-      size: 11,
-      color: black,
-    })
+  sectionTitle("INFORMAÇÕES PESSOAIS")
 
-    // Email e Telefone em coluna
-    yPosition += 18
-    page.drawText("Email", {
-      x: 50,
-      y: height - yPosition,
-      size: 9,
-      color: darkGray,
-    })
-    page.drawText("Telefone", {
-      x: 320,
-      y: height - yPosition,
-      size: 9,
-      color: darkGray,
-    })
+  row("Nome Completo", alunoData.name)
+  row("Email", alunoData.email)
+  row("Telefone", alunoData.phone)
+  row("Documento de Identidade", alunoData.bi)
 
-    yPosition += 12
-    page.drawText(alunoData.email, {
-      x: 50,
-      y: height - yPosition,
-      size: 10,
-      color: black,
-    })
-    page.drawText(alunoData.phone, {
-      x: 320,
-      y: height - yPosition,
-      size: 10,
-      color: black,
-    })
+  row(
+    "Data de Nascimento",
+    new Date(alunoData.birthDate).toLocaleDateString("pt-AO")
+  )
 
-    // BI e Data de Nascimento
-    yPosition += 18
-    page.drawText("Documento de Identidade", {
-      x: 50,
-      y: height - yPosition,
-      size: 9,
-      color: darkGray,
-    })
-    page.drawText("Data de Nascimento", {
-      x: 320,
-      y: height - yPosition,
-      size: 9,
-      color: darkGray,
-    })
+  row("Endereço", alunoData.address)
 
-    yPosition += 12
-    page.drawText(alunoData.bi, {
-      x: 50,
-      y: height - yPosition,
-      size: 10,
-      color: black,
-    })
-    page.drawText(new Date(alunoData.birthDate).toLocaleDateString("pt-AO"), {
-      x: 320,
-      y: height - yPosition,
-      size: 10,
-      color: black,
-    })
+  yPos += 10
 
-    // Endereço
-    yPosition += 18
-    page.drawText("Endereço", {
-      x: 50,
-      y: height - yPosition,
-      size: 9,
-      color: darkGray,
-    })
+  /* ===============================
+     INFORMAÇÕES ACADÉMICAS
+  =============================== */
 
-    yPosition += 12
-    page.drawText(alunoData.address, {
-      x: 50,
-      y: height - yPosition,
-      size: 10,
-      color: black,
-    })
+  sectionTitle("INFORMAÇÕES ACADÉMICAS")
 
-    // Linha separadora
-    yPosition += 18
-    page.drawLine({
-      start: { x: 50, y: height - yPosition },
-      end: { x: width - 50, y: height - yPosition },
-      thickness: 2,
-      color: darkBlue,
-    })
+  row("Formação", alunoData.formacao || "Não informado")
+  row("Turma", alunoData.turma || "Não informado")
 
-    // MATRÍCULA ACADÊMICA
-    yPosition += 25
-    page.drawText("MATRÍCULA ACADÊMICA", {
-      x: 50,
-      y: height - yPosition,
-      size: 14,
-      color: darkBlue,
-    })
+  row(
+    "Data de Matrícula",
+    new Date(alunoData.createdAt).toLocaleDateString("pt-AO")
+  )
 
-    // Formação e Turma
-    yPosition += 20
-    page.drawText("Formação", {
-      x: 50,
-      y: height - yPosition,
-      size: 9,
-      color: darkGray,
-    })
-    page.drawText("Turma", {
-      x: 320,
-      y: height - yPosition,
-      size: 9,
-      color: darkGray,
-    })
+  yPos += 10
 
-    yPosition += 12
-    page.drawText(alunoData.formacao || "Não informado", {
-      x: 50,
-      y: height - yPosition,
-      size: 10,
-      color: black,
-    })
-    page.drawText(alunoData.turma || "Não informado", {
-      x: 320,
-      y: height - yPosition,
-      size: 10,
-      color: black,
-    })
+  /* ===============================
+     PAGAMENTO
+  =============================== */
 
-    // Data de Inscrição
-    yPosition += 18
-    page.drawText("Data de Inscrição", {
-      x: 50,
-      y: height - yPosition,
-      size: 9,
-      color: darkGray,
-    })
+  sectionTitle("INFORMAÇÕES DE PAGAMENTO")
 
-    yPosition += 12
-    page.drawText(new Date(alunoData.createdAt).toLocaleDateString("pt-AO"), {
-      x: 50,
-      y: height - yPosition,
-      size: 10,
-      color: black,
-    })
+  row("Método de Pagamento", alunoData.paymentMethod || "Não informado")
 
-    // Linha separadora
-    yPosition += 18
-    page.drawLine({
-      start: { x: 50, y: height - yPosition },
-      end: { x: width - 50, y: height - yPosition },
-      thickness: 2,
-      color: darkBlue,
-    })
+  const statusText =
+    alunoData.paymentStatus === "paid"
+      ? "PAGO"
+      : alunoData.paymentStatus === "pending"
+      ? "PENDENTE"
+      : "EM PROCESSO"
 
-    // INFORMAÇÕES DE PAGAMENTO
-    yPosition += 25
-    page.drawText("INFORMAÇÕES DE PAGAMENTO", {
-      x: 50,
-      y: height - yPosition,
-      size: 14,
-      color: darkBlue,
-    })
+  const statusColor =
+    alunoData.paymentStatus === "paid"
+      ? green
+      : alunoData.paymentStatus === "pending"
+      ? red
+      : mediumGray
 
-    // Método de Pagamento e Prestações Pagas (lado a lado)
-    yPosition += 20
-    
-    // Coluna 1: Método de Pagamento
-    page.drawText("Método de Pagamento", {
-      x: 50,
-      y: height - yPosition,
-      size: 9,
-      color: darkGray,
-    })
-    
-    // Coluna 2: Prestações Pagas
-    page.drawText("Prestações Pagas", {
-      x: 320,
-      y: height - yPosition,
-      size: 9,
-      color: darkGray,
-    })
+  page.drawText("Estado",{
+    x:60,
+    y:height-yPos,
+    size:9,
+    font:helveticaBold,
+    color:mediumGray
+  })
 
-    yPosition += 12
-    
-    // Valor do método de pagamento
-    page.drawText(alunoData.paymentMethod || "Não informado", {
-      x: 50,
-      y: height - yPosition,
-      size: 10,
-      color: black,
-    })
+  page.drawRectangle({
+    x:220,
+    y:height-yPos-4,
+    width:90,
+    height:14,
+    color:statusColor,
+    opacity:0.15
+  })
 
-    // Calcular porcentagem de prestações
-    const installmentPercentage = alunoData.installmentsPaid && alunoData.totalInstallments
-      ? Math.round((alunoData.installmentsPaid / alunoData.totalInstallments) * 100)
+  page.drawText(statusText,{
+    x:230,
+    y:height-yPos,
+    size:10,
+    font:helveticaBold,
+    color:statusColor
+  })
+
+  yPos += 22
+
+  const percent =
+    alunoData.installmentsPaid && alunoData.totalInstallments
+      ? Math.round(
+          (alunoData.installmentsPaid /
+            alunoData.totalInstallments) * 100
+        )
       : 0
-    const installmentsText = alunoData.installmentsPaid && alunoData.totalInstallments
-      ? `${installmentPercentage}%`
-      : "Sem informação"
-    
-    // Valor da porcentagem de prestações
-    page.drawText(installmentsText, {
-      x: 320,
-      y: height - yPosition,
-      size: 10,
-      color: black,
-    })
 
-    // Rodapé centralizado no fundo da página (posição fixa)
-    const footerText = "Este documento foi gerado automaticamente pelo sistema Treinix"
-    const footerSize = 8
-    // Calcular posição centralizada na largura da página
-    const estimatedCharWidth = footerText.length * (footerSize * 0.4) // Aproximação
-    const footerX = (width - estimatedCharWidth) / 2
-    const footerY = 35 // 35 pontos do fundo da página
+  row("Percentagem Paga", `${percent}%`)
 
-    page.drawText(footerText, {
-      x: footerX,
-      y: footerY,
-      size: footerSize,
-      color: darkGray,
-    })
+  /* ===============================
+     RODAPÉ
+  =============================== */
 
-    // Telefone do sistema abaixo
-    if (alunoData.systemPhone) {
-      const phoneText = alunoData.systemPhone
-      const phoneCharWidth = phoneText.length * (footerSize * 0.4)
-      const phoneX = (width - phoneCharWidth) / 2
-      
-      page.drawText(phoneText, {
-        x: phoneX,
-        y: footerY - 12,
-        size: footerSize,
-        color: darkGray,
-      })
+  const today = new Date().toLocaleDateString("pt-AO")
+
+  page.drawLine({
+    start:{x:50,y:40},
+    end:{x:width-50,y:40},
+    thickness:1,
+    color:borderColor
+  })
+
+  page.drawText(
+    "Documento gerado automaticamente pelo sistema treinix.vercel.app",
+    {
+      x: width/2 - 160,
+      y: 25,
+      size:8,
+      color:mediumGray,
+      font:helvetica
     }
+  )
 
-    // Salvar PDF
-    const pdfBytes = await pdfDoc.save()
-    const blob = new Blob([pdfBytes as BlobPart], { type: "application/pdf" })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement("a")
-    link.href = url
-    link.download = `Ficha_${alunoData.name.replace(/\s+/g, "_")}.pdf`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
+  page.drawText(`Emitido em ${today}`,{
+    x: width-150,
+    y: 25,
+    size:8,
+    color:mediumGray,
+    font:helvetica
+  })
 
-    return true
-  } catch (error) {
-    console.error("Erro ao gerar PDF:", error)
-    throw error
-  }
-}
+  /* ===============================
+     DOWNLOAD
+  =============================== */
 
-export async function generatePDF(
-  titulo: string,
-  dados: Array<{ [key: string]: string }>,
-  totais?: { 
-    totalCobrado?: number
-    totalRecebido?: number
-    totalParcial?: number
-    totalPendente?: number
-    formatCurrency?: (value: number) => string
-    centroData?: { nome: string; email: string; telefone: string; endereco: string; nif?: string }
-  }
-) {
-  try {
-    const pdfDoc = await PDFDocument.create()
-    let page = pdfDoc.addPage([595, 842]) // A4
-    const { width, height } = page.getSize()
+  const pdfBytes = await pdfDoc.save()
 
-    const darkBlue = rgb(30 / 255, 58 / 255, 138 / 255) // #1e3a8a
-    const orange = rgb(249 / 255, 115 / 255, 22 / 255) // #f97316
-    const darkGray = rgb(50 / 255, 50 / 255, 50 / 255)
-    const mediumGray = rgb(100 / 255, 100 / 255, 100 / 255)
-    const lightGray = rgb(240 / 255, 240 / 255, 240 / 255)
-    const white = rgb(1, 1, 1)
-    const black = rgb(0, 0, 0)
+  const blob = new Blob([pdfBytes as BufferSource], {
+    type:"application/pdf"
+  })
 
-    const helveticaBold = await pdfDoc.embedFont("Helvetica-Bold")
-    const helvetica = await pdfDoc.embedFont("Helvetica")
+  const url = URL.createObjectURL(blob)
 
-    let yPosition = 40
+  const link = document.createElement("a")
 
-    // ===== CABEÇALHO FORMAL COM DADOS DO CENTRO =====
-    // Dados do Centro
-    if (totais?.centroData) {
-      const centro = totais.centroData
-      
-      // Nome do Centro - em destaque
-      page.drawText((centro.nome || "Centro de Formação").toUpperCase(), {
-        x: 40,
-        y: height - yPosition,
-        size: 16,
-        color: darkBlue,
-        font: helveticaBold,
-      })
-      yPosition += 18
+  link.href = url
+  link.download = `Ficha_${alunoData.name.replace(/\s+/g,"_")}.pdf`
 
-      // Informações de contato - bem formatadas
-      if (centro.email) {
-        page.drawText(`Email: ${centro.email}`, {
-          x: 40,
-          y: height - yPosition,
-          size: 10,
-          color: darkGray,
-          font: helvetica,
-        })
-        yPosition += 12
-      }
+  document.body.appendChild(link)
 
-      if (centro.telefone) {
-        page.drawText(`Telefone: ${centro.telefone}`, {
-          x: 40,
-          y: height - yPosition,
-          size: 10,
-          color: darkGray,
-          font: helvetica,
-        })
-        yPosition += 12
-      }
+  link.click()
 
-      if (centro.endereco) {
-        page.drawText(`Localização: ${centro.endereco}`, {
-          x: 40,
-          y: height - yPosition,
-          size: 10,
-          color: darkGray,
-          font: helvetica,
-        })
-        yPosition += 12
-      }
+  document.body.removeChild(link)
 
-      if (centro.nif) {
-        page.drawText(`NIF: ${centro.nif}`, {
-          x: 40,
-          y: height - yPosition,
-          size: 10,
-          color: darkGray,
-          font: helvetica,
-        })
-        yPosition += 12
-      }
+  URL.revokeObjectURL(url)
 
-      yPosition += 8
-    }
-
-    // ===== RESUMO FINANCEIRO =====
-    if (totais && totais.formatCurrency) {
-      const formatCurrency = totais.formatCurrency
-
-      // Título
-      page.drawText("RESUMO FINANCEIRO", {
-        x: 40,
-        y: height - yPosition,
-        size: 12,
-        color: darkBlue,
-        font: helveticaBold,
-      })
-      yPosition += 20
-
-      // Layout 2x2 com caixas colorizadas
-      const boxWidth = (width - 80) / 2 - 8
-      const boxHeight = 50
-      const greenColor = rgb(16/255, 185/255, 129/255) // #10b981
-      const blueColor = rgb(59/255, 130/255, 246/255) // #3b82f6
-      const purpleColor = rgb(139/255, 92/255, 246/255) // #8b5cf6
-      const orangeColor = rgb(249/255, 115/255, 22/255) // #f97316
-
-      const items = [
-        { label: "Total Cobrado", value: totais.totalCobrado || 0, color: greenColor },
-        { label: "Já Recebido", value: totais.totalRecebido || 0, color: blueColor },
-        { label: "Recebido Parcial", value: totais.totalParcial || 0, color: purpleColor },
-        { label: "A Receber", value: totais.totalPendente || 0, color: orangeColor },
-      ]
-
-      let boxIndex = 0
-      for (let i = 0; i < 2; i++) {
-        for (let j = 0; j < 2; j++) {
-          const xBox = 40 + j * (boxWidth + 16)
-          const yBox = height - yPosition - i * (boxHeight + 12)
-          const item = items[boxIndex]
-
-          // Caixa de fundo com cor
-          page.drawRectangle({
-            x: xBox,
-            y: yBox - boxHeight,
-            width: boxWidth,
-            height: boxHeight,
-            color: item.color,
-            opacity: 0.15,
-          })
-
-          // Borda
-          page.drawRectangle({
-            x: xBox,
-            y: yBox - boxHeight,
-            width: boxWidth,
-            height: boxHeight,
-            borderColor: item.color,
-            borderWidth: 1.5,
-          })
-
-          // Label
-          page.drawText(item.label, {
-            x: xBox + 8,
-            y: yBox - 18,
-            size: 9,
-            color: item.color,
-            font: helveticaBold,
-          })
-
-          // Valor
-          page.drawText(formatCurrency(item.value), {
-            x: xBox + 8,
-            y: yBox - 35,
-            size: 13,
-            color: darkBlue,
-            font: helveticaBold,
-          })
-
-          boxIndex++
-        }
-      }
-
-      yPosition += 130
-    }
-
-    // ===== TABELA DE DETALHAMENTO =====
-    page.drawText("DETALHAMENTO DE PAGAMENTOS", {
-      x: 40,
-      y: height - yPosition,
-      size: 11,
-      color: darkBlue,
-      font: helveticaBold,
-    })
-    yPosition += 18
-
-    // Cabeçalhos da tabela
-    const colunas = Object.keys(dados[0] || {})
-    const colunasAbreviadas = {
-      aluno: "Aluno",
-      formacao: "Formação",
-      turma: "Turma",
-      valor: "Valor",
-      parcelas: "Parc.",
-      metodo: "Método",
-      data: "Data",
-      status: "Status",
-    }
-
-    const larguraColuna = (width - 80) / colunas.length
-
-    // Background para cabeçalhos
-    page.drawRectangle({
-      x: 40,
-      y: height - yPosition - 12,
-      width: width - 80,
-      height: 15,
-      color: darkBlue,
-    })
-
-    let xCol = 50
-    colunas.forEach((col) => {
-      const colLabel = (colunasAbreviadas as { [key: string]: string })[col] || col
-      page.drawText(colLabel, {
-        x: xCol,
-        y: height - yPosition - 10,
-        size: 8,
-        color: white,
-        font: helveticaBold,
-      })
-      xCol += larguraColuna
-    })
-
-    yPosition += 20
-
-    // Linhas de dados
-    let linhasNaPagina = 0
-    const linhasMaximasPorPagina = 35
-
-    dados.forEach((row, indexRow) => {
-      // Verificar se precisa de nova página
-      if (linhasNaPagina >= linhasMaximasPorPagina) {
-        page = pdfDoc.addPage([595, 842])
-        yPosition = 40
-        linhasNaPagina = 0
-
-        // Repetir cabeçalhos na nova página
-        page.drawRectangle({
-          x: 40,
-          y: height - yPosition - 12,
-          width: width - 80,
-          height: 15,
-          color: darkBlue,
-        })
-
-        let xHeaderCol = 50
-        colunas.forEach((col) => {
-          const colLabel = (colunasAbreviadas as { [key: string]: string })[col] || col
-          page.drawText(colLabel, {
-            x: xHeaderCol,
-            y: height - yPosition - 10,
-            size: 8,
-            color: white,
-            font: helveticaBold,
-          })
-          xHeaderCol += larguraColuna
-        })
-
-        yPosition += 20
-      }
-
-      // Cores alternadas para linhas
-      if (linhasNaPagina % 2 === 0) {
-        page.drawRectangle({
-          x: 40,
-          y: height - yPosition - 10,
-          width: width - 80,
-          height: 12,
-          color: lightGray,
-        })
-      }
-
-      // Dados da linha
-      xCol = 50
-      colunas.forEach((col) => {
-        const texto = String(row[col] || "")
-        const textoTruncado = texto.length > 12 ? texto.substring(0, 10) + "..." : texto
-
-        page.drawText(textoTruncado, {
-          x: xCol,
-          y: height - yPosition - 8,
-          size: 8,
-          color: black,
-        })
-        xCol += larguraColuna
-      })
-
-      yPosition += 12
-      linhasNaPagina += 1
-    })
-
-    // ===== RODAPÉ =====
-    const footerY = 20
-    const separadorY = 30
-
-    // Linha separadora no rodapé
-    page.drawRectangle({
-      x: 40,
-      y: footerY + separadorY,
-      width: width - 80,
-      height: 1,
-      color: mediumGray,
-    })
-
-    // Data e hora de geração
-    const dataAtual = new Date().toLocaleDateString("pt-AO", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    })
-    const horaAtual = new Date().toLocaleTimeString("pt-AO", {
-      hour: "2-digit",
-      minute: "2-digit",
-    })
-
-    // Texto do rodapé - Data/Hora à esquerda
-    page.drawText(`Gerado em: ${dataAtual} às ${horaAtual}`, {
-      x: 40,
-      y: footerY + 15,
-      size: 7,
-      color: mediumGray,
-    })
-
-    // Sistema ao centro
-    const footerText = "Treinix - Sistema de Gestão de Centros de Formação"
-    const footerSize = 7
-    const estimatedCharWidth = footerText.length * (footerSize * 0.4)
-    const footerX = (width - estimatedCharWidth) / 2
-
-    page.drawText(footerText, {
-      x: footerX,
-      y: footerY + 15,
-      size: footerSize,
-      color: mediumGray,
-    })
-
-    // Página à direita
-    page.drawText(`Página ${pdfDoc.getPages().length}`, {
-      x: width - 80,
-      y: footerY + 15,
-      size: footerSize,
-      color: mediumGray,
-    })
-
-    // Salvar PDF
-    const pdfBytes = await pdfDoc.save()
-    const blob = new Blob([pdfBytes as BlobPart], { type: "application/pdf" })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement("a")
-    link.href = url
-    link.download = `Relatorio_Pagamentos_${dataAtual.replace(/\//g, "-")}.pdf`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-
-    return true
-  } catch (error) {
-    console.error("Erro ao gerar PDF de relatório:", error)
-    throw error
-  }
 }
