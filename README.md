@@ -1,4 +1,4 @@
-# Formação-Ao - Sistema de Gestão para Centros de Formação
+# Treinix - Sistema de Gestão para Centros de Formação
 
 Sistema SaaS completo para gestão de centros de formação em Angola, desenvolvido com Next.js 16, React 19 e TypeScript.
 
