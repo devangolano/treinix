@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
-const MONTHLY_PRICE = 5000 // 5.000 Kz por mês
+const MONTHLY_PRICE = 7500 // 7.500 Kz por mês
 
 export default function SubscriptionPage() {
   const router = useRouter()
